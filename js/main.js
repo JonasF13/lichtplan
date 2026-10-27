@@ -426,6 +426,22 @@ if (!prefs.get('firstRunDone')) {
   prefs.set('firstRunDone', true);
   setTimeout(() => toast('Tipp: Klicke auf die Karte, um den Standort zu setzen · <kbd>?</kbd> zeigt Tastenkürzel'), 1200);
 }
+// ── Als eigene App installieren (Chrome/Edge: eigenes Fenster + eigenes Dock-Symbol) ──
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  installEvt = e;
+  $('#btn-install').classList.remove('hidden');
+});
+$('#btn-install').onclick = async () => {
+  if (!installEvt) return;
+  installEvt.prompt();
+  const r = await installEvt.userChoice;
+  if (r.outcome === 'accepted') $('#btn-install').classList.add('hidden');
+  installEvt = null;
+};
+window.addEventListener('appinstalled', () => { $('#btn-install').classList.add('hidden'); toast('Lichtplan ist jetzt eine eigene App – mit eigenem Symbol im Dock'); });
+
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }

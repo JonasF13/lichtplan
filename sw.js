@@ -1,5 +1,5 @@
 // Lichtplan Service Worker – App offline verfügbar (Netzwerk zuerst, Cache als Fallback)
-const CACHE = 'lichtplan-v3';
+const CACHE = 'lichtplan-v4';
 const SHELL = ['./', 'index.html', 'css/app.css', 'manifest.json', 'icons/icon.svg',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/astronomy.browser.min.js',
   'js/main.js', 'js/utils.js', 'js/astro.js', 'js/store.js', 'js/state.js', 'js/services.js', 'js/map.js',
