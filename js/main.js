@@ -362,6 +362,19 @@ async function showSetupQR() {
       <p class="muted small">Der Code enthält deinen Sync-Token${prefs.get('gmapsKey') ? ' und den Google-Key' : ''}. Nicht weitergeben.</p>`,
   });
 }
+/** Einrichtung über eine lokale Datei (nur am Mac, nur vom eigenen Rechner aus anlegbar) – ohne Klick */
+async function applyLocalSetup() {
+  if (!/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) return;
+  let cfg;
+  try { const r = await fetch('setup.json', { cache: 'no-store' }); if (!r.ok) return; cfg = await r.json(); } catch { return; }
+  if (!cfg?.nonce || prefs.get('setupNonce') === cfg.nonce) return;
+  prefs.set('setupNonce', cfg.nonce);
+  if (cfg.gmapsKey) prefs.set('gmapsKey', cfg.gmapsKey);
+  if (cfg.sync?.repo && cfg.sync?.token) await setSyncConfig(cfg.sync);
+  toast(`✓ Eingerichtet${cfg.sync ? ' – Synchronisierung verbunden' : ''}${cfg.gmapsKey ? ', Street View bereit' : ''}`);
+  if (state.view === 'sv') activateStreetView();
+  if (store.spots.length) refreshSidebar();
+}
 function handleSetupLink() {
   const cfg = readSetupLink();
   if (!cfg) return;
@@ -421,6 +434,7 @@ async function importFile() {
 // ── Start ───────────────────────────────────────────────────
 setView('map');
 handleSetupLink();
+applyLocalSetup();
 window.addEventListener('hashchange', handleSetupLink);
 // Sun-Surveyor-Import nur anbieten, wenn die Datei vorhanden ist (nicht in der Online-Version)
 if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
