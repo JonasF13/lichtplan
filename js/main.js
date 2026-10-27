@@ -12,6 +12,7 @@ import { initSky, activateSky, deactivateSky } from './sky.js';
 import { initAI, toggleAI, openAI, closeAI, openAISettings, isOpen as aiOpen } from './ai/chat.js';
 import { initSync, syncNow, syncConfig, setSyncConfig, syncStatus, onSync, testSync, setupLink, readSetupLink } from './sync.js';
 import { HOSTED_URL } from './config.js';
+import { getTideModel } from './tides.js';
 import { searchPlaces, reverseName, forecast, elevations } from './services.js';
 import { modal, toast, menu, confirmDialog } from './ui.js';
 import { $, $$, hydrateIcons, icon, esc, parseCoords, debounce, fmtCoord, pickFile, distance, deviceTz, relTime } from './utils.js';
@@ -70,6 +71,7 @@ const refreshLocation = debounce(async () => {
       chipSub.textContent = chipSub.textContent.replace(/ · \d+ m$/, '') + ` · ${Math.round(elev)} m`;
     }
   } catch {}
+  getTideModel(lat, lng).catch(() => {}); // Gezeiten im Hintergrund vorbereiten (für Zeitleiste & Reiter)
   try {
     const w = await forecast(lat, lng);
     if (Math.abs(state.lat - lat) < 0.05 && Math.abs(state.lng - lng) < 0.05) {

@@ -9,8 +9,9 @@ import {
   milkyWayCalendar, observer, nextQuarters,
 } from '../astro.js';
 import { searchPlaces, elevations, forecast, timezoneAt } from '../services.js';
+import { getTideModel, tideDay, tideEvents } from '../tides.js';
 import {
-  zonedParts, zonedToUtc, dayKey, fmtTime, fmtDuration, distance, bearing, elevationAngle, phaseOf, compass, wrap360,
+  zonedParts, zonedToUtc, dayKey, fmtTime, fmtDuration, distance, bearing, elevationAngle, phaseOf, compass, wrap360, startOfLocalDay,
 } from '../utils.js';
 
 let ui = {}; // { selectSpot, openSpot, flyTo, setView }
@@ -282,6 +283,45 @@ const TOOLS = [
         at_sunset: day.sun.set ? { time: fmtTime(day.sun.set, L.tz), ...at(day.sun.set), verdict: verdict(at(day.sun.set)) } : null,
         hourly: hours,
       };
+    },
+  },
+  {
+    name: 'get_tides',
+    description: 'Tides at a coastal place for one local date: high/low water times and heights (m relative to mean sea level), tidal range, spring/neap. Optionally search the coming days for low/high tide coinciding with sunset/sunrise/golden hour.',
+    parameters: {
+      date: { type: 'string', description: 'Local date YYYY-MM-DD (default: date selected in app)' },
+      search_tide: { type: 'string', enum: ['low', 'high'], description: 'Optional: search for this tide type …' },
+      search_light: { type: 'string', enum: ['sunset', 'sunrise', 'golden_evening', 'golden_morning', 'blue_evening'], description: '… coinciding with this light' },
+      days: { type: 'number', description: 'Days to search, default 60, max 365' },
+      tolerance_minutes: { type: 'number', description: 'Default 60' },
+      ...LOC,
+    },
+    label: (a, r) => r?.no_tides ? 'Gezeiten · kein Meer' : `Gezeiten · ${r?.date || ''}${r?.matches ? ` · ${r.matches.length} Treffer` : ''}`,
+    async run(a) {
+      const L = await loc(a);
+      const model = await getTideModel(L.lat, L.lng);
+      if (model.inland) return { location: locInfo(L), no_tides: true, note: 'Kein Meer in der Nähe – keine Gezeiten.' };
+      const d = parseDay(a.date, L.tz);
+      const T = tideDay(model, L.tz, d);
+      const out = {
+        location: locInfo(L), date: dayKey(d, L.tz), tidal_range_m: r1(T.range), kind: T.kind,
+        events: T.events.map((e) => ({ type: e.type === 'high' ? 'Hochwasser' : 'Niedrigwasser', time: fmtTime(e.t, L.tz), height_m: r1(e.h), link: tlink(e.t, L.tz, L.spot_id, false) })),
+        accuracy: '±5–15 min, Höhe relativ zum Mittelwasser, ohne Wettereinfluss',
+      };
+      if (a.search_tide && a.search_light) {
+        const days = Math.min(365, +a.days || 60), tol = (+a.tolerance_minutes || 60) * 60000, matches = [];
+        for (let i = 0; i < days; i++) {
+          const dd = new Date(startOfLocalDay(state.time, L.tz).getTime() + (i + 0.5) * 864e5);
+          const day = getDay(L.lat, L.lng, L.elev, L.tz, dd), E = day.ev;
+          const win = { sunset: [E.sunset, E.sunset], sunrise: [E.sunrise, E.sunrise], golden_evening: [E.goldenStart, E.blueStart], golden_morning: [E.blueEnd, E.goldenEnd], blue_evening: [E.blueStart, E.civilDusk] }[a.search_light];
+          if (!win?.[0] || !win[1]) continue;
+          for (const e of tideEvents(model, new Date(win[0] - tol), new Date(win[1].getTime() + tol))) {
+            if (e.type === a.search_tide) matches.push({ date: dayKey(e.t, L.tz), weekday: weekday(e.t, L.tz), tide_time: fmtTime(e.t, L.tz), height_m: r1(e.h), light_time: fmtTime(win[0], L.tz), link: tlink(e.t, L.tz, L.spot_id) });
+          }
+        }
+        out.matches = matches.slice(0, 40);
+      }
+      return out;
     },
   },
   {

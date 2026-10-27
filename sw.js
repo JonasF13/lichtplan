@@ -1,9 +1,9 @@
 // Lichtplan Service Worker – App offline verfügbar (Netzwerk zuerst, Cache als Fallback)
-const CACHE = 'lichtplan-v8';
+const CACHE = 'lichtplan-v9';
 const SHELL = ['./', 'index.html', 'css/app.css', 'manifest.json', 'icons/icon.svg',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/astronomy.browser.min.js',
   'js/main.js', 'js/utils.js', 'js/astro.js', 'js/store.js', 'js/state.js', 'js/services.js', 'js/map.js',
-  'js/timebar.js', 'js/panels.js', 'js/projects.js', 'js/streetview.js', 'js/sky.js', 'js/ui.js', 'js/ai/chat.js', 'js/ai/provider.js', 'js/ai/tools.js', 'js/ai/exif.js', 'js/sync.js', 'js/config.js', 'vendor/qrcode.esm.js'];
+  'js/timebar.js', 'js/panels.js', 'js/projects.js', 'js/streetview.js', 'js/sky.js', 'js/ui.js', 'js/ai/chat.js', 'js/ai/provider.js', 'js/ai/tools.js', 'js/ai/exif.js', 'js/sync.js', 'js/config.js', 'js/tides.js', 'vendor/qrcode.esm.js'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys()

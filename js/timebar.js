@@ -3,6 +3,7 @@
 // ─────────────────────────────────────────────────────────────
 import { state, setState, onState } from './state.js';
 import { getDay, sunPos, yearOverview } from './astro.js';
+import { cachedTideModel, tideHeight } from './tides.js';
 import {
   $, icon, zonedParts, zonedToUtc, startOfLocalDay, addLocalDays, fmtTime, fmtDateLong,
   minutesOfDay, phaseOf, PHASES, rafThrottle, tzOffsetMin, fmtDateShort,
@@ -75,6 +76,7 @@ export function initTimebar(opts) {
   $('.tb-date-btn').addEventListener('click', (e) => { try { di.showPicker(); e.preventDefault(); } catch {} });
 
   new ResizeObserver(() => { lastDayKey = lastYearKey = ''; render(); }).observe(tb);
+  window.addEventListener('lp-tides', () => { lastDayKey = ''; render(); });
   onState((ch) => { if (ch.has('time') || ch.has('lat') || ch.has('lng') || ch.has('tz') || ch.has('elev') || ch.has('activeSpotId')) render(); });
   render();
 }
@@ -153,6 +155,16 @@ function drawDay(day) {
     const x1 = ((p.t - day.start) / 60000 / dayMin) * w, x2 = ((day.moonPath[i + 1].t - day.start) / 60000 / dayMin) * w;
     ctx.fillRect(x1, h - 3, x2 - x1 + 0.5, 3);
   });
+  // Gezeiten (falls am Meer): türkise Linie
+  const tm = cachedTideModel(state.lat, state.lng);
+  if (tm && !tm.inland) {
+    const pts = [];
+    for (let m = 0; m <= dayMin; m += 10) pts.push([(m / dayMin) * w, tideHeight(tm, new Date(day.start.getTime() + m * 60000))]);
+    const lo = Math.min(...pts.map((p) => p[1])), hi = Math.max(...pts.map((p) => p[1]));
+    ctx.beginPath();
+    pts.forEach(([x, v], i) => { const y = h - 4 - ((v - lo) / (hi - lo || 1)) * (h - 10); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    ctx.strokeStyle = 'rgba(77,208,225,.95)'; ctx.lineWidth = 1.6; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+  }
   // Stunden-Ticks
   ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.font = '500 9px -apple-system, Inter, sans-serif'; ctx.textBaseline = 'top';
   for (let hh = 0; hh <= 24; hh += 1) {

@@ -616,3 +616,9 @@ i.lo { background: #8395a7; } i.mid { background: #b8c4d6; } i.hi { background: 
 .qr-wrap svg { width: 100%; height: auto; display: block; }
 .qr-steps { padding-left: 20px; margin: 0 0 8px; } .qr-steps li { margin: 5px 0; }
 .welcome .small .ic { width: 13px; height: 13px; vertical-align: -2px; }
+
+/* ── Gezeiten ───────────────────────────────────────────── */
+.tide-cv { width: 100%; height: 140px; display: block; border-radius: 9px; background: rgba(0,0,0,.25); margin-bottom: 8px; }
+.tide-ico { width: 14px; text-align: center; font-size: 10px; }
+.tide-ico.high { color: #4dd0e1; } .tide-ico.low { color: #8fb0ff; }
+.tabs button { font-size: 12px; padding-left: 2px; padding-right: 2px; }

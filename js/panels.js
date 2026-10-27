@@ -13,6 +13,7 @@ import {
 import { drawMoon, COLORS } from './map.js';
 import { elevations } from './services.js';
 import { prefs } from './store.js';
+import { getTideModel, cachedTideModel, tideDay, tideNow, tideEvents, isMicroTidal } from './tides.js';
 
 let current = 'light';
 export function initPanels() {
@@ -25,6 +26,7 @@ export function initPanels() {
   });
   render(new Set(['init']));
   updateTargetInfo();
+  window.addEventListener('lp-tides', () => { if (current === 'tides') render(new Set(['tides'])); });
 }
 export function showTab(tab) {
   current = tab;
@@ -40,6 +42,7 @@ function render(ch) {
   if (current === 'moon') renderMoon(day);
   if (current === 'night') renderNight(day);
   if (current === 'weather') renderWeather(day);
+  if (current === 'tides') renderTides(day);
   if (current === 'plan') renderPlanLive(day);
 }
 
@@ -333,6 +336,129 @@ function renderPlanLive(day) {
 }
 
 // ── Wetter ──────────────────────────────────────────────────
+// ── Gezeiten ────────────────────────────────────────────────
+let tideErr = null, tideSearchHtml = '';
+function renderTides(day) {
+  const tz = state.tz;
+  const model = cachedTideModel(state.lat, state.lng);
+  if (!model) {
+    paint('tides', card('Gezeiten', tideErr ? `<p class="warn">${esc(tideErr)}</p>` : `<div class="progress indet"><i></i></div><p class="muted">Berechne die Gezeiten für diesen Ort aus einem Jahr Meeresdaten …</p>`, 'wave'));
+    if (!tideErr) getTideModel(state.lat, state.lng).then(() => { tideErr = null; }).catch((e) => { tideErr = e.message; render(new Set(['tides'])); });
+    return;
+  }
+  if (model.inland) {
+    paint('tides', card('Gezeiten', '<p class="muted">Hier gibt es keine Gezeiten – dieser Ort liegt nicht am Meer.</p><p class="muted small">Setze den Standort an eine Küste, z. B. auf einen deiner Küsten-Spots.</p>', 'wave'));
+    return;
+  }
+  const T = tideDay(model, tz, state.time);
+  const now = tideNow(model, state.time);
+  const fmtH = (h) => `${h >= 0 ? '+' : '−'}${fmtNum(Math.abs(h), Math.abs(h) < 1 ? 2 : 1)} m`;
+  const evList = T.events.map((e) => `<button class="ev" data-t="${e.t.getTime()}"><span class="tide-ico ${e.type}">${e.type === 'high' ? '▲' : '▼'}</span><span class="ev-l">${e.type === 'high' ? 'Hochwasser' : 'Niedrigwasser'}</span><b>${fmtTime(e.t, tz)}</b><em>${fmtH(e.h)}</em></button>`).join('');
+  const micro = isMicroTidal(model);
+  paint('tides',
+    card('', `
+      <div class="hero">
+        <div class="hero-icon" style="--c:#4dd0e1">${icon('wave')}</div>
+        <div>
+          <div class="hero-title">${now.rising ? 'Steigend ↗' : 'Fallend ↘'} · ${fmtH(now.h)}</div>
+          <div class="hero-sub">${now.next ? `${now.next.type === 'high' ? 'Hochwasser' : 'Niedrigwasser'} um ${fmtTime(now.next.t, tz)} (${fmtRel(now.next.t - state.time).replace('in ', 'in ')}) · ${fmtH(now.next.h)}` : ''}</div>
+        </div>
+      </div>
+      ${micro ? '<p class="muted small">Im Mittelmeer sind die Gezeiten sehr klein – Wind und Luftdruck verändern den Wasserstand oft stärker als die Tide.</p>' : ''}`) +
+    card(`Tidenverlauf · ${fmtDateShort(state.time, tz)}`, `
+      <canvas class="tide-cv" id="tide-cv"></canvas>
+      <div class="evlist">${evList || '<p class="muted">Keine Hoch-/Niedrigwasser an diesem Tag.</p>'}</div>
+      <div class="kvs">${row('Tidenhub', `${fmtNum(T.range, T.range < 1 ? 2 : 1)} m`, T.kind)}</div>`, 'clock') +
+    card('Gezeit zum Licht', `
+      <p class="muted">Findet Tage, an denen Hoch- oder Niedrigwasser mit dem schönsten Licht zusammenfällt – z. B. Felsen und Gezeitentümpel bei Ebbe im Abendlicht.</p>
+      <div class="form-grid">
+        <label>Gezeit<select id="td-type"><option value="low">Niedrigwasser</option><option value="high">Hochwasser</option></select></label>
+        <label>Licht<select id="td-light">
+          <option value="sunset">Sonnenuntergang</option><option value="sunrise">Sonnenaufgang</option>
+          <option value="goldenPm">Goldene Stunde abends</option><option value="goldenAm">Goldene Stunde morgens</option>
+          <option value="bluePm">Blaue Stunde abends</option></select></label>
+        <label>Toleranz<select id="td-tol"><option value="30">± 30 min</option><option value="60" selected>± 1 h</option><option value="90">± 1,5 h</option></select></label>
+        <label>Zeitraum<select id="td-days"><option value="30">1 Monat</option><option value="90" selected>3 Monate</option><option value="365">12 Monate</option></select></label>
+      </div>
+      <button class="btn primary block" id="td-run">${icon('search')}Suchen</button>
+      <div id="td-out">${tideSearchHtml}</div>`, 'search') +
+    `<p class="muted small pad">Berechnet aus Meeresmodell-Daten (Open-Meteo Marine, Meerespunkt ${fmtNum(model.distKm, 0)} km entfernt). Genauigkeit typ. ±5–15 Min. Höhen relativ zum Mittelwasser, ohne Wettereinfluss. Nicht für die Navigation.</p>`);
+  drawTideChart(T, day, tz);
+  bindEvButtons($('#td-out'));
+  $('#td-run').onclick = () => runTideSearch(model);
+}
+
+function drawTideChart(T, day, tz) {
+  const cv = $('#tide-cv'); if (!cv) return;
+  const r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const w = r.width, h = r.height, pad = 14;
+  const span = T.end - T.start;
+  const X = (t) => ((t - T.start) / span) * w;
+  const lo = T.min - (T.max - T.min) * 0.15, hi = T.max + (T.max - T.min) * 0.25;
+  const Y = (v) => pad + (1 - (v - lo) / (hi - lo || 1)) * (h - pad * 2);
+  // Licht-Hintergrund (Phasen der Sonne)
+  for (let i = 1; i < day.sunPath.length; i++) {
+    const a = day.sunPath[i - 1];
+    ctx.fillStyle = phaseOf(a.alt).color; ctx.globalAlpha = phaseOf(a.alt).key === 'day' ? 0.12 : 0.35;
+    ctx.fillRect(X(a.t), 0, X(day.sunPath[i].t) - X(a.t) + 0.5, h);
+  }
+  ctx.globalAlpha = 1;
+  // Kurve
+  const grad = ctx.createLinearGradient(0, 0, 0, h);
+  grad.addColorStop(0, 'rgba(77,208,225,.55)'); grad.addColorStop(1, 'rgba(77,208,225,.05)');
+  ctx.beginPath(); ctx.moveTo(0, h);
+  T.curve.forEach((p) => ctx.lineTo(X(p.t), Y(p.h)));
+  ctx.lineTo(w, h); ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+  ctx.beginPath(); T.curve.forEach((p, i) => (i ? ctx.lineTo(X(p.t), Y(p.h)) : ctx.moveTo(X(p.t), Y(p.h))));
+  ctx.strokeStyle = '#4dd0e1'; ctx.lineWidth = 2; ctx.stroke();
+  // Sonnenauf-/untergang
+  ctx.font = '600 9.5px -apple-system, Inter, sans-serif'; ctx.textAlign = 'center';
+  [[day.sun.rise, COLORS.sunrise], [day.sun.set, COLORS.sunset]].forEach(([t, c]) => { if (!t) return; ctx.fillStyle = c; ctx.fillRect(X(t) - 0.75, 0, 1.5, h); });
+  // Ereignisse
+  T.events.forEach((e) => {
+    const x = X(e.t), y = Y(e.h);
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y, 3, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.fillText(fmtTime(e.t, tz), Math.min(w - 16, Math.max(16, x)), e.type === 'high' ? y - 7 : y + 13);
+  });
+  // aktuelle Zeit
+  if (state.time >= T.start && state.time <= T.end) { ctx.fillStyle = '#fff'; ctx.fillRect(X(state.time) - 1, 0, 2, h); }
+  // Stunden
+  ctx.fillStyle = 'rgba(255,255,255,.45)'; ctx.textAlign = 'left';
+  for (let hh = 3; hh < 24; hh += 3) ctx.fillText(String(hh), X(T.start.getTime() + hh * 3600e3) + 2, h - 3);
+}
+
+async function runTideSearch(model) {
+  const out = $('#td-out'), btn = $('#td-run');
+  const type = $('#td-type').value, light = $('#td-light').value, tol = +$('#td-tol').value * 60000, days = +$('#td-days').value;
+  btn.disabled = true; out.innerHTML = progressBar();
+  const tz = state.tz, hits = [];
+  const base = startOfDayLocal(state.time, tz);
+  for (let i = 0; i < days; i++) {
+    const d = new Date(base.getTime() + (i + 0.5) * 864e5);
+    const day = getDay(state.lat, state.lng, state.elev, tz, d);
+    const E = day.ev;
+    const win = { sunset: [E.sunset, E.sunset], sunrise: [E.sunrise, E.sunrise], goldenPm: [E.goldenStart, E.blueStart], goldenAm: [E.blueEnd, E.goldenEnd], bluePm: [E.blueStart, E.civilDusk] }[light];
+    if (!win[0] || !win[1]) continue;
+    const a = new Date(win[0].getTime() - tol), b = new Date(win[1].getTime() + tol);
+    for (const e of tideEvents(model, a, b)) {
+      if (e.type !== type) continue;
+      const mid = (win[0].getTime() + win[1].getTime()) / 2;
+      hits.push({ e, light: win, delta: e.t - mid, day });
+    }
+    if (i % 20 === 19) { setProgress(out, i / days); await new Promise((r) => setTimeout(r, 0)); }
+  }
+  btn.disabled = false;
+  const lbl = { sunset: 'Sonnenuntergang', sunrise: 'Sonnenaufgang', goldenPm: 'Goldene Stunde', goldenAm: 'Goldene Stunde', bluePm: 'Blaue Stunde' }[light];
+  tideSearchHtml = hits.length
+    ? `<p class="muted">${hits.length} Treffer</p><div class="evlist">${hits.slice(0, 50).map((x) => `<button class="ev" data-t="${x.e.t.getTime()}"><span class="tide-ico ${x.e.type}">${x.e.type === 'high' ? '▲' : '▼'}</span><span class="ev-l">${fmtDate(x.e.t, tz)}<small>${lbl} ${fmtTime(x.light[0], tz)}${x.light[1] !== x.light[0] ? '–' + fmtTime(x.light[1], tz) : ''}</small></span><b>${fmtTime(x.e.t, tz)}</b><em>${x.e.h >= 0 ? '+' : '−'}${fmtNum(Math.abs(x.e.h), 1)} m</em></button>`).join('')}</div>`
+    : '<p class="muted">Keine Treffer im Zeitraum – Toleranz erhöhen oder Zeitraum verlängern.</p>';
+  out.innerHTML = tideSearchHtml;
+  bindEvButtons(out);
+}
+const startOfDayLocal = (d, tz) => { const p = zonedParts(d, tz); return zonedToUtc(p.y, p.m, p.d, 0, 0, tz); };
+
 function renderWeather(day) {
   const w = state.weather;
   const tz = state.tz;
