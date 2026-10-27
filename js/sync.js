@@ -158,6 +158,8 @@ export function initSync() {
   store.onAnyChange((why) => { if (why !== 'sync' && syncConfig()) push(); });
   document.addEventListener('visibilitychange', () => { if (syncConfig()) syncNow(); });
   window.addEventListener('online', () => syncConfig() && syncNow());
+  let lastFocus = 0; // beim Zurückwechseln ins Fenster neue Daten holen (höchstens alle 15 s)
+  window.addEventListener('focus', () => { if (syncConfig() && Date.now() - lastFocus > 15000) { lastFocus = Date.now(); syncNow(); } });
   setInterval(() => { if (syncConfig() && document.visibilityState === 'visible') syncNow(); }, 3 * 60e3);
   if (syncConfig()) syncNow(); else setStatus({ state: 'off' });
 }
