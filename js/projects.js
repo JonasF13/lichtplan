@@ -54,7 +54,7 @@ function updateSyncFoot() {
   const f = $('#sync-foot'); if (!f) return;
   const st = syncStatus();
   const txt = {
-    off: `${icon('sync')}<span>Mit iPhone synchronisieren …</span>`,
+    off: `${icon('sync')}<span>Synchronisierung einrichten …</span>`,
     syncing: `<i class="spin"></i><span>Synchronisiere …</span>`,
     ok: `${icon('check')}<span>Synchronisiert ${relTime(st.at)}</span>`,
     offline: `${icon('cloud')}<span>Offline – Änderungen werden später übertragen</span>`,

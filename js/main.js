@@ -414,9 +414,11 @@ setView('map');
 handleSetupLink();
 window.addEventListener('hashchange', handleSetupLink);
 // Sun-Surveyor-Import nur anbieten, wenn die Datei vorhanden ist (nicht in der Online-Version)
-fetch('data/sunsurveyor-import.json', { method: 'HEAD', cache: 'no-store' })
-  .then((r) => { window.__lpHasSSImport = r.ok; }).catch(() => { window.__lpHasSSImport = false; })
-  .finally(() => refreshSidebar());
+if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
+  fetch('data/sunsurveyor-import.json', { method: 'HEAD', cache: 'no-store' })
+    .then((r) => { window.__lpHasSSImport = r.ok; }).catch(() => { window.__lpHasSSImport = false; })
+    .finally(() => refreshSidebar());
+}
 if (!prefs.get('firstRunDone')) {
   prefs.set('firstRunDone', true);
   setTimeout(() => toast('Tipp: Klicke auf die Karte, um den Standort zu setzen · <kbd>?</kbd> zeigt Tastenkürzel'), 1200);
