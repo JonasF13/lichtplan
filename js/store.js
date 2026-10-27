@@ -138,10 +138,19 @@ export const store = {
     persist('import');
   },
   // ── Synchronisierung ──
-  syncPayload() { return { projects: data.projects, spots: data.spots, deleted: data.deleted || {} }; },
+  syncPayload() {
+    const shared = settings.gmapsKey ? { gmapsKey: settings.gmapsKey, gmapsKeyAt: settings.gmapsKeyAt || 1 } : {};
+    return { projects: data.projects, spots: data.spots, deleted: data.deleted || {}, shared };
+  },
   applySync(m) {
     data = { version: 1, projects: m.projects, spots: m.spots, deleted: m.deleted || {} };
     localStorage.setItem(DATA_KEY, JSON.stringify(data));
+    // geteilte Einstellungen (Google-Key) vom anderen Gerät übernehmen, wenn neuer
+    const sh = m.shared || {};
+    if (sh.gmapsKey && (sh.gmapsKeyAt || 0) > (settings.gmapsKeyAt || 0)) {
+      settings = { ...DEFAULT_SETTINGS, ...load(SETTINGS_KEY, {}), gmapsKey: sh.gmapsKey, gmapsKeyAt: sh.gmapsKeyAt };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    }
     listeners.forEach((f) => f('sync'));
   },
 };
@@ -161,9 +170,18 @@ const DEFAULT_SETTINGS = {
 let settings = { ...DEFAULT_SETTINGS, ...load(SETTINGS_KEY, {}) };
 settings.layers = { ...DEFAULT_SETTINGS.layers, ...settings.layers };
 settings.svLayers = { ...DEFAULT_SETTINGS.svLayers, ...settings.svLayers };
+window.addEventListener('storage', (e) => {
+  if (e.key === SETTINGS_KEY && e.newValue) settings = { ...DEFAULT_SETTINGS, ...JSON.parse(e.newValue) };
+  if (e.key === DATA_KEY && e.newValue) { data = JSON.parse(e.newValue); data.deleted ||= {}; listeners.forEach((f) => f('sync')); }
+});
 export const prefs = {
   get: (k) => settings[k],
-  set(k, v) { settings[k] = v; localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); },
+  set(k, v) {
+    // erst den aktuellen Stand lesen (ein anderes Lichtplan-Fenster könnte ihn geändert haben)
+    settings = { ...DEFAULT_SETTINGS, ...load(SETTINGS_KEY, {}), [k]: v };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    if (k === 'gmapsKey') { settings.gmapsKeyAt = Date.now(); localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); anyListeners.forEach((f) => f('settings')); }
+  },
   all: () => settings,
 };
 

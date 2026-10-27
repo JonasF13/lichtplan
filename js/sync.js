@@ -72,6 +72,8 @@ async function fetchRemote(cfg) {
 /** Zusammenführen: pro Eintrag gewinnt der neuere Stand; Grabsteine löschen ältere Stände */
 export function mergeData(local, remote) {
   if (!remote) return normalize(local);
+  const ls = local.shared || {}, rs = remote.shared || {};
+  const shared = (rs.gmapsKeyAt || 0) > (ls.gmapsKeyAt || 0) ? rs : ls;
   const deleted = { ...(remote.deleted || {}) };
   for (const [id, t] of Object.entries(local.deleted || {})) if (!deleted[id] || deleted[id] < t) deleted[id] = t;
   const pick = (kind) => {
@@ -88,15 +90,16 @@ export function mergeData(local, remote) {
   };
   const cutoff = Date.now() - 180 * 864e5; // alte Grabsteine aufräumen
   for (const [id, t] of Object.entries(deleted)) if (t < cutoff) delete deleted[id];
-  return normalize({ projects: pick('projects'), spots: pick('spots'), deleted });
+  return normalize({ projects: pick('projects'), spots: pick('spots'), deleted, shared });
 }
 function normalize(d) {
   const byId = (a, b) => String(a.id).localeCompare(String(b.id));
   const del = {};
   Object.keys(d.deleted || {}).sort().forEach((k) => { del[k] = d.deleted[k]; });
-  return { projects: [...(d.projects || [])].sort(byId), spots: [...(d.spots || [])].sort(byId), deleted: del };
+  const sh = d.shared && d.shared.gmapsKey ? { gmapsKey: d.shared.gmapsKey, gmapsKeyAt: d.shared.gmapsKeyAt || 1 } : {};
+  return { projects: [...(d.projects || [])].sort(byId), spots: [...(d.spots || [])].sort(byId), deleted: del, shared: sh };
 }
-const canon = (d) => JSON.stringify(normalize(d || { projects: [], spots: [], deleted: {} }));
+const canon = (d) => JSON.stringify(normalize(d || { projects: [], spots: [], deleted: {}, shared: {} }));
 
 function deviceName() {
   const ua = navigator.userAgent;

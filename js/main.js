@@ -368,7 +368,7 @@ function handleSetupLink() {
   if (cfg.invalid) return toast('Ungültiger Einrichtungs-Link', 'warn');
   modal({
     title: 'Lichtplan einrichten',
-    body: `<p>Einstellungen vom Mac übernehmen?</p><ul>
+    body: `<p>Diese Einstellungen übernehmen?</p><ul>
       ${cfg.sync ? `<li>Synchronisierung mit <b>${esc(cfg.sync.repo)}</b> – deine Projekte und Spots werden geladen</li>` : ''}
       ${cfg.gmapsKey ? '<li>Google-Key für Street View</li>' : ''}</ul>`,
     actions: [
