@@ -1,4 +1,4 @@
-# Lichtplan
+# Specula
 
 Foto-Planungs-App für Sonne, Mond und Milchstraße: Projekte, Spots und Termine,
 Street View mit Sonnenbahn, Ausrichtungs-Planer, Wetter und KI-Assistent.

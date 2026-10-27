@@ -92,7 +92,7 @@ export async function capabilities(p) {
 function headers(p) {
   const h = { 'Content-Type': 'application/json' };
   if (p.apiKey) h.Authorization = `Bearer ${p.apiKey}`;
-  if (p.preset === 'openrouter') { h['HTTP-Referer'] = location.origin; h['X-Title'] = 'Lichtplan'; }
+  if (p.preset === 'openrouter') { h['HTTP-Referer'] = location.origin; h['X-Title'] = 'Specula'; }
   return h;
 }
 

@@ -95,10 +95,10 @@ export const store = {
   allTags() {
     const set = new Set(); data.spots.forEach((s) => (s.tags || []).forEach((t) => set.add(t))); return [...set].sort();
   },
-  exportJSON() { return JSON.stringify({ app: 'Lichtplan', version: 1, exported: new Date().toISOString(), projects: data.projects, spots: data.spots }, null, 1); },
+  exportJSON() { return JSON.stringify({ app: 'Specula', version: 1, exported: new Date().toISOString(), projects: data.projects, spots: data.spots }, null, 1); },
   /** mode: 'merge' (Duplikate per id überspringen) | 'replace' */
   importJSON(obj, mode = 'merge') {
-    if (!obj || !Array.isArray(obj.spots)) throw new Error('Keine gültige Lichtplan-Datei');
+    if (!obj || !Array.isArray(obj.spots)) throw new Error('Keine gültige Specula-Datei');
     if (mode === 'replace') data = { version: 1, projects: [], spots: [], deleted: data.deleted || {} };
     const pIds = new Set(data.projects.map((p) => p.id)), sIds = new Set(data.spots.map((s) => s.id));
     const now = Date.now();
@@ -177,7 +177,7 @@ window.addEventListener('storage', (e) => {
 export const prefs = {
   get: (k) => settings[k],
   set(k, v) {
-    // erst den aktuellen Stand lesen (ein anderes Lichtplan-Fenster könnte ihn geändert haben)
+    // erst den aktuellen Stand lesen (ein anderes Specula-Fenster könnte ihn geändert haben)
     settings = { ...DEFAULT_SETTINGS, ...load(SETTINGS_KEY, {}), [k]: v };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     if (k === 'gmapsKey') { settings.gmapsKeyAt = Date.now(); localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); anyListeners.forEach((f) => f('settings')); }

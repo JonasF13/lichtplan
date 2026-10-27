@@ -79,7 +79,7 @@ function showEmpty(err) {
     <div class="empty-card glass">
       <div class="empty-icon">${icon('streetview')}</div>
       <h2>Street View mit Sonnenbahn</h2>
-      ${err ? `<p class="warn">${esc(err)}</p>` : '<p>Für die eingeblendeten Sonnen- und Mondbahnen braucht Lichtplan einen eigenen Google-Maps-API-Key. Du hinterlegst ihn einmal in den Einstellungen; er bleibt nur auf diesem Gerät gespeichert.</p>'}
+      ${err ? `<p class="warn">${esc(err)}</p>` : '<p>Für die eingeblendeten Sonnen- und Mondbahnen braucht Specula einen eigenen Google-Maps-API-Key. Du hinterlegst ihn einmal in den Einstellungen; er bleibt nur auf diesem Gerät gespeichert.</p>'}
       <div class="btn-row center">
         <button class="btn primary" id="sv-open-settings">${icon('settings')}API-Key eintragen</button>
         <a class="btn ghost" href="${url}" target="_blank" rel="noopener">${icon('ext')}In Google Maps öffnen (${Math.round(heading)}° ${compass(heading)})</a>

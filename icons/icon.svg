@@ -1,16 +1,38 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a2440"/><stop offset="1" stop-color="#0b0f17"/></linearGradient>
-    <linearGradient id="sun" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffc061"/><stop offset=".55" stop-color="#ff7b54"/><stop offset="1" stop-color="#ff5e7e"/></linearGradient>
-    <radialGradient id="glow" cx=".5" cy=".62" r=".5"><stop offset="0" stop-color="#ff9f43" stop-opacity=".55"/><stop offset="1" stop-color="#ff9f43" stop-opacity="0"/></radialGradient>
+    <clipPath id="sq"><rect width="1024" height="1024" rx="228"/></clipPath>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#141b36"/><stop offset=".7" stop-color="#2a2452"/><stop offset="1" stop-color="#4a2b55"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="560" x2="0" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1a1a3a"/><stop offset="1" stop-color="#080b14"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="512" cy="560" r="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff7b54" stop-opacity=".6"/><stop offset=".5" stop-color="#ff5e7e" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#ff5e7e" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="sun" x1="0" y1="360" x2="0" y2="560" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffd36e"/><stop offset=".55" stop-color="#ff9a4d"/><stop offset="1" stop-color="#ff5e7e"/>
+    </linearGradient>
+    <linearGradient id="refl" x1="0" y1="560" x2="0" y2="760" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff6f78" stop-opacity=".95"/><stop offset="1" stop-color="#ff9a4d" stop-opacity=".35"/>
+    </linearGradient>
+    <clipPath id="upper"><rect x="0" y="0" width="1024" height="560"/></clipPath>
+    <mask id="ripples" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect y="572" width="1024" height="24" fill="#fff"/><rect y="608" width="1024" height="20" fill="#fff"/>
+      <rect y="640" width="1024" height="16" fill="#fff"/><rect y="668" width="1024" height="12" fill="#fff"/>
+      <rect y="692" width="1024" height="9" fill="#fff"/><rect y="712" width="1024" height="6" fill="#fff"/>
+      <rect y="729" width="1024" height="4" fill="#fff"/>
+    </mask>
   </defs>
-  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
-  <circle cx="256" cy="318" r="230" fill="url(#glow)"/>
-  <path d="M96 318 A160 160 0 0 1 416 318" fill="none" stroke="#ffe08a" stroke-width="10" stroke-dasharray="4 22" stroke-linecap="round" opacity=".8"/>
-  <circle cx="256" cy="318" r="92" fill="url(#sun)"/>
-  <rect x="0" y="318" width="512" height="194" fill="#0e1424"/>
-  <path d="M0 318 L150 250 L230 300 L310 228 L420 292 L512 262 L512 330 L0 330 Z" fill="#141c30"/>
-  <line x1="72" y1="320" x2="440" y2="320" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity=".92"/>
-  <line x1="256" y1="330" x2="256" y2="430" stroke="#2ee59d" stroke-width="10" stroke-linecap="round" stroke-dasharray="18 16"/>
-  <circle cx="256" cy="440" r="16" fill="#2ee59d"/>
+  <g clip-path="url(#sq)">
+    <rect width="1024" height="560" fill="url(#sky)"/>
+    <rect y="560" width="1024" height="464" fill="url(#sea)"/>
+    <rect width="1024" height="1024" fill="url(#glow)"/>
+    <path d="M 202 560 A 310 310 0 0 1 822 560" fill="none" stroke="#ffe08a" stroke-width="16" stroke-linecap="round" stroke-dasharray="0.1 34" opacity=".85"/>
+    <path d="M 202 560 A 310 310 0 0 0 822 560" fill="none" stroke="#ffe08a" stroke-width="12" stroke-linecap="round" stroke-dasharray="0.1 34" opacity=".18"/>
+    <circle cx="512" cy="560" r="200" fill="url(#sun)" clip-path="url(#upper)"/>
+    <circle cx="512" cy="560" r="200" fill="url(#refl)" mask="url(#ripples)"/>
+    <line x1="150" y1="560" x2="874" y2="560" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".92"/>
+  </g>
 </svg>

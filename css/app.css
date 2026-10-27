@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────────────────────────
-   Lichtplan – Design
+   Specula – Design
    ───────────────────────────────────────────────────────────── */
 :root {
   --bg: #0b0f17;
@@ -65,9 +65,7 @@ code { font: 12px ui-monospace, "SF Mono", monospace; background: rgba(255,255,2
 
 /* ── Topbar ─────────────────────────────────────────────── */
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; letter-spacing: -.01em; min-width: calc(var(--sb-w) - 28px); }
-.brand-logo { width: 26px; height: 26px; border-radius: 8px; background: var(--grad); position: relative; box-shadow: 0 4px 14px rgba(255, 123, 84, .45); }
-.brand-logo::after { content: ""; position: absolute; inset: 7px 5px 9px; border-radius: 50% 50% 0 0; border: 2px solid rgba(255,255,255,.95); border-bottom: 0; }
-.brand-logo::before { content: ""; position: absolute; left: 4px; right: 4px; bottom: 7px; height: 2px; background: rgba(255,255,255,.95); border-radius: 2px; }
+.brand-logo { width: 26px; height: 26px; flex: none; border-radius: 7px; background: url(../icons/icon.svg) center / cover no-repeat; box-shadow: 0 4px 14px rgba(255, 94, 126, .35); }
 .search-wrap { flex: 1; max-width: 560px; position: relative; display: flex; align-items: center; }
 .search-wrap > .icon { position: absolute; left: 11px; color: var(--text3); pointer-events: none; }
 #search { width: 100%; height: 34px; border-radius: 10px; border: 1px solid var(--line2); background: rgba(255,255,255,.05); padding: 0 12px 0 34px; outline: none; transition: .15s; }

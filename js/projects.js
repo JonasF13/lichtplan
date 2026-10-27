@@ -124,7 +124,7 @@ function renderHome() {
   } else {
     if (store.isEmpty) {
       body.appendChild(el(`<div class="welcome card">
-        <h3>${icon('bookmark')}Willkommen bei Lichtplan</h3>
+        <h3>${icon('bookmark')}Willkommen bei Specula</h3>
         <p>Organisiere deine Foto-Spots in <b>Projekten</b> (z. B. eine Reise). Jeder Spot speichert Ort, Ziel, Notizen und beliebig viele <b>Termine</b> mit Uhrzeit – inklusive Lichtsituation.</p>
         ${window.__lpHasSSImport ? `<button class="btn primary block" id="sb-import-ss">${icon('download')}31 Orte aus Sun Surveyor übernehmen</button>` : ''}
         ${!syncConfig() && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' ? `<p class="muted small">${icon('phone')} Deine Projekte vom Mac holen: am Mac <b>Einstellungen → iPhone verbinden</b> und den QR-Code mit der Kamera scannen.</p>` : ''}
@@ -171,8 +171,8 @@ function renderHome() {
   node.querySelector('#sb-more').onclick = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
     menu(r.left, r.bottom + 6, [
-      { label: 'Backup exportieren (JSON)', icon: 'download', onClick: () => download(`Lichtplan-Backup-${new Date().toISOString().slice(0, 10)}.json`, store.exportJSON()) },
-      { label: 'Alle Spots als KML (Google Earth)', icon: 'download', onClick: () => download('Lichtplan.kml', toKML('Lichtplan', store.spots), 'application/vnd.google-earth.kml+xml') },
+      { label: 'Backup exportieren (JSON)', icon: 'download', onClick: () => download(`Specula-Backup-${new Date().toISOString().slice(0, 10)}.json`, store.exportJSON()) },
+      { label: 'Alle Spots als KML (Google Earth)', icon: 'download', onClick: () => download('Specula.kml', toKML('Specula', store.spots), 'application/vnd.google-earth.kml+xml') },
       '-',
       { label: 'Importieren (JSON / KML) …', icon: 'upload', onClick: () => api.importFile() },
       window.__lpHasSSImport ? { label: 'Orte aus Sun Surveyor übernehmen', icon: 'download', onClick: () => api.importSunSurveyor() } : null,
@@ -276,7 +276,7 @@ function renderProject() {
       { label: 'Alle Spots auf Karte zeigen', icon: 'map', onClick: () => api.fitSpots(store.spotsOf(p.id)) },
       '-',
       { label: 'Als KML exportieren', icon: 'download', onClick: () => download(`${p.name}.kml`, toKML(p.name, store.spotsOf(p.id)), 'application/vnd.google-earth.kml+xml') },
-      { label: 'Als Lichtplan-Datei exportieren', icon: 'download', onClick: () => download(`${p.name}.lichtplan.json`, JSON.stringify({ app: 'Lichtplan', version: 1, projects: [p], spots: store.spotsOf(p.id) }, null, 1)) },
+      { label: 'Als Specula-Datei exportieren', icon: 'download', onClick: () => download(`${p.name}.specula.json`, JSON.stringify({ app: 'Specula', version: 1, projects: [p], spots: store.spotsOf(p.id) }, null, 1)) },
       '-',
       { label: p.archived ? 'Aus Archiv holen' : 'Archivieren', icon: 'folder', onClick: () => { store.updateProject(p.id, { archived: !p.archived }); if (!p.archived) goHome(); } },
       { label: 'Projekt löschen …', icon: 'trash', danger: true, onClick: async () => {

@@ -125,8 +125,8 @@ export function syncNow() {
         if (cm !== canon(local)) store.applySync(merged);
         if (remote && cm === canon(remote.data)) { setStatus({ state: 'ok', at: Date.now(), error: null }); return; }
         const body = {
-          message: `Lichtplan-Sync von ${deviceName()} · ${merged.projects.length} Projekte, ${merged.spots.length} Spots`,
-          content: b64encode(JSON.stringify({ app: 'Lichtplan', version: 1, saved: new Date().toISOString(), ...merged }, null, 1)),
+          message: `Specula-Sync von ${deviceName()} · ${merged.projects.length} Projekte, ${merged.spots.length} Spots`,
+          content: b64encode(JSON.stringify({ app: 'Specula', version: 1, saved: new Date().toISOString(), ...merged }, null, 1)),
           ...(remote ? { sha: remote.sha } : {}),
         };
         let r;

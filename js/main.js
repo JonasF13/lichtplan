@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────
-// Lichtplan – Einstiegspunkt
+// Specula – Einstiegspunkt
 // ─────────────────────────────────────────────────────────────
 import { state, setState, onState } from './state.js';
 import { store, prefs, parseKML } from './store.js';
@@ -279,7 +279,7 @@ function openSettings(focus) {
         </section>
       </div>`,
     onOpen: (n) => {
-      n.querySelector('#set-export').onclick = () => import('./utils.js').then((u) => u.download(`Lichtplan-Backup-${new Date().toISOString().slice(0, 10)}.json`, store.exportJSON()));
+      n.querySelector('#set-export').onclick = () => import('./utils.js').then((u) => u.download(`Specula-Backup-${new Date().toISOString().slice(0, 10)}.json`, store.exportJSON()));
       n.querySelector('#set-import').onclick = importFile;
       // ── Synchronisierung
       const syncState = () => {
@@ -292,7 +292,7 @@ function openSettings(focus) {
       onSync(syncState);
       const tokenLink = () => {
         const owner = n.querySelector('#sync-repo').value.trim().split('/')[0];
-        n.querySelector('#sync-token-link').href = 'https://github.com/settings/personal-access-tokens/new?name=Lichtplan-Sync&description=' + encodeURIComponent('Synchronisierung der Lichtplan-App (nur Repository lichtplan-daten)') + '&expires_in=365&contents=write' + (owner ? `&target_name=${encodeURIComponent(owner)}` : '');
+        n.querySelector('#sync-token-link').href = 'https://github.com/settings/personal-access-tokens/new?name=Specula-Sync&description=' + encodeURIComponent('Synchronisierung der Specula-App (nur Repository lichtplan-daten)') + '&expires_in=365&contents=write' + (owner ? `&target_name=${encodeURIComponent(owner)}` : '');
       };
       tokenLink();
       n.querySelector('#sync-repo').addEventListener('input', tokenLink);
@@ -358,8 +358,8 @@ async function showSetupQR() {
     body: `<div class="qr-wrap">${qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true })}</div>
       <ol class="qr-steps">
         <li>iPhone-<b>Kamera</b> auf den Code richten und den Link öffnen.</li>
-        <li>In Lichtplan auf <b>Übernehmen</b> tippen – deine Projekte werden geladen.</li>
-        <li>In Safari: Teilen-Symbol → <b>Zum Home-Bildschirm</b>. Fertig – Lichtplan ist jetzt eine App auf deinem iPhone.</li>
+        <li>In Specula auf <b>Übernehmen</b> tippen – deine Projekte werden geladen.</li>
+        <li>In Safari: Teilen-Symbol → <b>Zum Home-Bildschirm</b>. Fertig: Specula ist jetzt eine App auf deinem iPhone oder iPad.</li>
       </ol>
       <p class="muted small">Der Code enthält deinen Sync-Token${prefs.get('gmapsKey') ? ' und den Google-Key' : ''}. Nicht weitergeben.</p>`,
   });
@@ -388,7 +388,7 @@ function handleSetupLink() {
     return;
   }
   modal({
-    title: 'Lichtplan einrichten',
+    title: 'Specula einrichten',
     body: `<p>Diese Einstellungen übernehmen?</p><ul>
       ${cfg.sync ? `<li>Synchronisierung mit <b>${esc(cfg.sync.repo)}</b> – deine Projekte und Spots werden geladen</li>` : ''}
       ${cfg.gmapsKey ? '<li>Google-Key für Street View</li>' : ''}</ul>`,
@@ -462,10 +462,10 @@ $('#btn-install').onclick = async () => {
   if (r.outcome === 'accepted') $('#btn-install').classList.add('hidden');
   installEvt = null;
 };
-window.addEventListener('appinstalled', () => { $('#btn-install').classList.add('hidden'); toast('Lichtplan ist jetzt eine eigene App – mit eigenem Symbol im Dock'); });
+window.addEventListener('appinstalled', () => { $('#btn-install').classList.add('hidden'); toast('Specula ist jetzt eine eigene App, mit eigenem Symbol im Dock'); });
 
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 // Für Tests/Debugging
-window.lichtplan = { state, setState, store, prefs };
+window.specula = window.lichtplan = { state, setState, store, prefs };

@@ -166,7 +166,7 @@ function submit() {
 }
 
 function systemPrompt(useTools, extra = '') {
-  return `Du bist der Assistent der Foto-Planungs-App „Lichtplan“ (ähnlich Sun Surveyor / PhotoPills) – ein erfahrener Landschafts- und Reisefotograf. Du hilfst, Sonne, Mond, Milchstraße und Wetter zu planen und Foto-Spots in Projekten (Reisen) zu organisieren.
+  return `Du bist der Assistent der Foto-Planungs-App „Specula“ (ähnlich Sun Surveyor / PhotoPills) – ein erfahrener Landschafts- und Reisefotograf. Du hilfst, Sonne, Mond, Milchstraße und Wetter zu planen und Foto-Spots in Projekten (Reisen) zu organisieren.
 
 REGELN
 1. ${useTools ? 'Uhrzeiten, Richtungen (Azimut), Mondphasen, Wetter und Koordinaten NIE schätzen oder aus dem Gedächtnis nennen – immer die Werkzeuge verwenden. Mehrere Werkzeuge nacheinander nutzen ist ausdrücklich erwünscht.' : 'Du hast in diesem Modus KEINE Werkzeuge. Nutze ausschließlich die Daten unten. Wenn etwas fehlt, sag ehrlich, dass du es nicht berechnen kannst, und verweise auf den Planer-Reiter der App.'}

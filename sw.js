@@ -1,5 +1,5 @@
-// Lichtplan Service Worker – App offline verfügbar (Netzwerk zuerst, Cache als Fallback)
-const CACHE = 'lichtplan-v9';
+// Specula Service Worker – App offline verfügbar (Netzwerk zuerst, Cache als Fallback)
+const CACHE = 'specula-v10';
 const SHELL = ['./', 'index.html', 'css/app.css', 'manifest.json', 'icons/icon.svg',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/astronomy.browser.min.js',
   'js/main.js', 'js/utils.js', 'js/astro.js', 'js/store.js', 'js/state.js', 'js/services.js', 'js/map.js',
@@ -9,7 +9,7 @@ self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys()
     .then((ks) => Promise.all(ks.filter((k) => k !== CACHE && k !== CACHE + '-tiles').map((k) => caches.delete(k))))
     .then(() => self.clients.claim())
-    // alle offenen Lichtplan-Fenster auf die neue Version bringen (alte Fenster könnten sonst Einstellungen überschreiben)
+    // alle offenen Specula-Fenster auf die neue Version bringen (alte Fenster könnten sonst Einstellungen überschreiben)
     .then(() => self.clients.matchAll({ type: 'window' }))
     .then((cs) => Promise.all(cs.map((c) => c.navigate(c.url.replace(/#.*$/, '')).catch(() => null)))));
 });
