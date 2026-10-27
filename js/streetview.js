@@ -204,10 +204,16 @@ async function locate(force) {
   lastLoc = key;
   const info = $('#sv-info');
   info.classList.remove('hidden'); info.innerHTML = '<span class="muted">Suche Panorama …</span>';
-  for (const radius of [50, 250, 1000, 5000]) {
+  // Zuerst Googles eigene Street-View-Bilder (zuverlässig), erst danach Nutzer-Fotos (laden oft nicht → schwarz)
+  const SV = google.maps.StreetViewSource;
+  const attempts = [];
+  for (const radius of [50, 250, 1000, 5000]) attempts.push({ radius, source: SV.GOOGLE || SV.OUTDOOR });
+  for (const radius of [50, 1000, 5000]) attempts.push({ radius, source: SV.DEFAULT, user: true });
+  for (const { radius, source, user } of attempts) {
     try {
-      const { data } = await svService.getPanorama({ location: { lat: state.lat, lng: state.lng }, radius, preference: google.maps.StreetViewPreference.NEAREST, sources: [google.maps.StreetViewSource.DEFAULT] });
+      const { data } = await svService.getPanorama({ location: { lat: state.lat, lng: state.lng }, radius, preference: google.maps.StreetViewPreference.NEAREST, sources: [source] });
       if (data?.location) {
+        if (user) data.location.description = (data.location.description || 'Panorama') + ' · Nutzerfoto';
         pano.setPano(data.location.pano);
         const ll = data.location.latLng;
         panoPos = { lat: ll.lat(), lng: ll.lng(), date: data.imageDate, desc: data.location.description };

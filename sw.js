@@ -1,5 +1,5 @@
 // Lichtplan Service Worker – App offline verfügbar (Netzwerk zuerst, Cache als Fallback)
-const CACHE = 'lichtplan-v7';
+const CACHE = 'lichtplan-v8';
 const SHELL = ['./', 'index.html', 'css/app.css', 'manifest.json', 'icons/icon.svg',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/astronomy.browser.min.js',
   'js/main.js', 'js/utils.js', 'js/astro.js', 'js/store.js', 'js/state.js', 'js/services.js', 'js/map.js',
@@ -7,7 +7,7 @@ const SHELL = ['./', 'index.html', 'css/app.css', 'manifest.json', 'icons/icon.s
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys()
-    .then((ks) => Promise.all(ks.filter((k) => k !== CACHE && !k.endsWith('-tiles')).map((k) => caches.delete(k))))
+    .then((ks) => Promise.all(ks.filter((k) => k !== CACHE && k !== CACHE + '-tiles').map((k) => caches.delete(k))))
     .then(() => self.clients.claim())
     // alle offenen Lichtplan-Fenster auf die neue Version bringen (alte Fenster könnten sonst Einstellungen überschreiben)
     .then(() => self.clients.matchAll({ type: 'window' }))
@@ -16,7 +16,8 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
-  const isTile = /tile|basemaps|arcgisonline/.test(url.hostname + url.pathname);
+  // Nur unsere Karten-Kacheln zwischenspeichern – niemals Google (Street View braucht frische, CORS-fähige Antworten)
+  const isTile = /(^|\.)(arcgisonline\.com|tile\.openstreetmap\.org|tile\.opentopomap\.org)$/.test(url.hostname);
   if (url.pathname.endsWith('/setup.json')) return; // Einrichtungsdatei nie zwischenspeichern
   if (url.origin === location.origin) {
     const fresh = e.request.mode === 'navigate' ? new Request(e.request.url, { cache: 'no-cache' }) : new Request(e.request, { cache: 'no-cache' });
