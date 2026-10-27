@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0b0f17" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Lichtplan" />
+  <title>Lichtplan</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icons/icon-180.png" />
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+  <link rel="stylesheet" href="css/app.css" />
+</head>
+<body data-mobile-tab="map">
+  <div id="app">
+    <!-- ───────────── Header ───────────── -->
+    <header id="topbar">
+      <div class="brand">
+        <div class="brand-logo"></div>
+        <span>Lichtplan</span>
+      </div>
+
+      <div class="search-wrap">
+        <span class="icon" data-icon="search"></span>
+        <input id="search" type="search" autocomplete="off" spellcheck="false"
+               placeholder="Ort suchen oder Koordinaten eingeben …" />
+        <div id="search-results" class="dropdown hidden"></div>
+      </div>
+
+      <div class="top-actions">
+        <button class="btn icon-btn" id="btn-locate" title="Mein Standort"><span data-icon="locate"></span></button>
+        <div class="segmented" id="view-switch">
+          <button data-view="map" class="active"><span data-icon="map"></span><span class="lbl">Karte</span></button>
+          <button data-view="sv"><span data-icon="streetview"></span><span class="lbl">Street View</span></button>
+          <button data-view="sky"><span data-icon="sky"></span><span class="lbl">Himmel</span></button>
+        </div>
+        <button class="btn ai-btn" id="btn-ai" title="KI-Assistent (K)"><span data-icon="sparkles"></span><span class="lbl">Assistent</span></button>
+        <button class="btn primary" id="btn-save-spot" title="Ort &amp; Zeit speichern (S)"><span data-icon="bookmark-plus"></span><span class="lbl">Spot speichern</span></button>
+        <button class="btn icon-btn" id="btn-settings" title="Einstellungen"><span data-icon="settings"></span></button>
+      </div>
+    </header>
+
+    <!-- ───────────── Sidebar: Projekte ───────────── -->
+    <aside id="sidebar" class="panel"></aside>
+
+    <!-- ───────────── Hauptansicht ───────────── -->
+    <main id="stage">
+      <div id="location-chip" class="glass">
+        <div class="loc-main">
+          <span class="dot sun"></span>
+          <div>
+            <div id="loc-name" class="loc-name">Standort</div>
+            <div id="loc-sub" class="loc-sub"></div>
+          </div>
+        </div>
+        <div class="loc-actions">
+          <button class="chip-btn" id="btn-target-mode" title="Ziel setzen (T)"><span data-icon="target"></span>Ziel</button>
+          <button class="chip-btn" id="btn-copy-coords" title="Koordinaten kopieren"><span data-icon="copy"></span></button>
+        </div>
+      </div>
+
+      <div id="view-map" class="view active">
+        <div id="map"></div>
+        <canvas id="map-overlay"></canvas>
+        <div id="map-tools" class="glass vertical">
+          <button class="tool" data-style="dark" title="Dunkel"><span data-icon="moon-map"></span></button>
+          <button class="tool" data-style="osm" title="Straßenkarte"><span data-icon="map"></span></button>
+          <button class="tool" data-style="topo" title="Topografie"><span data-icon="mountain"></span></button>
+          <button class="tool" data-style="sat" title="Satellit"><span data-icon="satellite"></span></button>
+          <div class="sep"></div>
+          <button class="tool toggle" data-layer="sun" title="Sonne"><span data-icon="sun"></span></button>
+          <button class="tool toggle" data-layer="moon" title="Mond"><span data-icon="moon"></span></button>
+          <button class="tool toggle" data-layer="milky" title="Milchstraße"><span data-icon="galaxy"></span></button>
+          <button class="tool toggle" data-layer="spots" title="Gespeicherte Spots"><span data-icon="pin"></span></button>
+        </div>
+        <div id="map-legend" class="glass"></div>
+        <div id="ctx-menu" class="dropdown hidden"></div>
+      </div>
+
+      <div id="view-sv" class="view">
+        <div id="sv-pano"></div>
+        <canvas id="sv-overlay"></canvas>
+        <div id="sv-info" class="glass hidden"></div>
+        <div id="sv-tools" class="glass hidden">
+          <button class="tool toggle" data-svlayer="sun" title="Sonnenbahn"><span data-icon="sun"></span></button>
+          <button class="tool toggle" data-svlayer="moon" title="Mondbahn"><span data-icon="moon"></span></button>
+          <button class="tool toggle" data-svlayer="milky" title="Milchstraße"><span data-icon="galaxy"></span></button>
+          <button class="tool toggle" data-svlayer="grid" title="Horizont &amp; Raster"><span data-icon="grid"></span></button>
+          <div class="sep"></div>
+          <button class="tool" id="sv-look-sun" title="Zur Sonne schauen"><span data-icon="eye"></span></button>
+          <button class="tool" id="sv-use-pos" title="Panorama-Position als Standort"><span data-icon="pin"></span></button>
+          <button class="tool" id="sv-calib" title="Kalibrierung"><span data-icon="sliders"></span></button>
+        </div>
+        <div id="sv-empty" class="empty-state"></div>
+      </div>
+
+      <div id="view-sky" class="view">
+        <canvas id="sky-canvas"></canvas>
+        <div id="sky-hint" class="glass hint">Ziehen zum Drehen · Scrollen zum Zoomen</div>
+      </div>
+
+      <!-- Zeitleiste -->
+      <section id="timebar" class="glass"></section>
+    </main>
+
+    <!-- ───────────── Inspector ───────────── -->
+    <aside id="inspector" class="panel">
+      <nav class="tabs" id="insp-tabs">
+        <button data-tab="light" class="active">Licht</button>
+        <button data-tab="moon">Mond</button>
+        <button data-tab="night">Nacht</button>
+        <button data-tab="plan">Planer</button>
+        <button data-tab="weather">Wetter</button>
+      </nav>
+      <div class="insp-body">
+        <div class="tab-pane active" data-pane="light"></div>
+        <div class="tab-pane" data-pane="moon"></div>
+        <div class="tab-pane" data-pane="night"></div>
+        <div class="tab-pane" data-pane="plan"></div>
+        <div class="tab-pane" data-pane="weather"></div>
+      </div>
+    </aside>
+
+    <!-- Mobile Tabbar -->
+    <nav id="mobile-nav">
+      <button data-mt="projects"><span data-icon="folder"></span>Projekte</button>
+      <button data-mt="map" class="active"><span data-icon="map"></span>Karte</button>
+      <button data-mt="info"><span data-icon="sun"></span>Licht</button>
+      <button data-mt="ai"><span data-icon="sparkles"></span>KI</button>
+    </nav>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast-root"></div>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="vendor/astronomy.browser.min.js"></script>
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
