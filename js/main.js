@@ -304,7 +304,10 @@ function openSettings(focus) {
         if (!t.ok) { el.className = 'key-out small bad'; el.textContent = `✗ ${t.message}`; return; }
         await setSyncConfig({ repo, token });
         syncState();
-        if (syncStatus().state === 'ok') toast(t.empty ? 'Synchronisierung eingerichtet – deine Daten sind jetzt in GitHub gesichert' : 'Verbunden – Daten zusammengeführt');
+        if (syncStatus().state === 'ok') {
+          toast(t.empty ? 'Synchronisierung eingerichtet – deine Daten sind jetzt in GitHub gesichert' : 'Verbunden – Daten zusammengeführt');
+          setTimeout(() => { n.remove(); openSettings('sync'); }, 700); // neu öffnen → Knopf „iPhone verbinden“ erscheint
+        }
       };
       n.querySelector('#sync-now')?.addEventListener('click', () => syncNow());
       n.querySelector('#sync-off')?.addEventListener('click', async () => { await setSyncConfig(null); toast('Synchronisierung getrennt (Daten bleiben auf diesem Gerät)'); });
