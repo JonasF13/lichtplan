@@ -232,7 +232,7 @@ function openSettings(focus) {
           <p class="muted">Hält Projekte, Spots und Termine auf allen Geräten gleich – über ein <b>privates</b> GitHub-Repository, auf das nur du Zugriff hast. Jede Änderung bleibt dort als Versionsverlauf erhalten (zusätzliches Backup).</p>
           <div id="sync-state" class="key-out small"></div>
           <div class="row2">
-            <label>Repository<input id="sync-repo" value="${esc(syncConfig()?.repo || prefs.get('syncRepoHint') || '')}" placeholder="benutzername/lichtplan-daten" spellcheck="false" autocomplete="off"></label>
+            <label>Repository<input id="sync-repo" value="${esc(syncConfig()?.repo || (HOSTED_URL.match(/^https:\/\/([^.]+)\.github\.io/)?.[1] ? HOSTED_URL.match(/^https:\/\/([^.]+)\.github\.io/)[1] + '/lichtplan-daten' : ''))}" placeholder="benutzername/lichtplan-daten" spellcheck="false" autocomplete="off"></label>
             <label>Zugriffs-Token<input id="sync-token" type="password" value="${esc(syncConfig()?.token || '')}" placeholder="github_pat_…" autocomplete="off" spellcheck="false"></label>
           </div>
           <div class="btn-row wrap">
