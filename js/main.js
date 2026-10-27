@@ -366,6 +366,12 @@ function handleSetupLink() {
   const cfg = readSetupLink();
   if (!cfg) return;
   if (cfg.invalid) return toast('Ungültiger Einrichtungs-Link', 'warn');
+  if (cfg.gmapsKey && !cfg.sync) {
+    prefs.set('gmapsKey', cfg.gmapsKey);
+    toast('✓ Google-Key für Street View übernommen');
+    if (state.view === 'sv') activateStreetView();
+    return;
+  }
   modal({
     title: 'Lichtplan einrichten',
     body: `<p>Diese Einstellungen übernehmen?</p><ul>

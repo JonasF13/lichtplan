@@ -171,7 +171,7 @@ let settings = { ...DEFAULT_SETTINGS, ...load(SETTINGS_KEY, {}) };
 settings.layers = { ...DEFAULT_SETTINGS.layers, ...settings.layers };
 settings.svLayers = { ...DEFAULT_SETTINGS.svLayers, ...settings.svLayers };
 window.addEventListener('storage', (e) => {
-  if (e.key === SETTINGS_KEY && e.newValue) settings = { ...DEFAULT_SETTINGS, ...JSON.parse(e.newValue) };
+  if (e.key === SETTINGS_KEY && e.newValue) { settings = { ...DEFAULT_SETTINGS, ...JSON.parse(e.newValue) }; listeners.forEach((f) => f('settings')); }
   if (e.key === DATA_KEY && e.newValue) { data = JSON.parse(e.newValue); data.deleted ||= {}; listeners.forEach((f) => f('sync')); }
 });
 export const prefs = {

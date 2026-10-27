@@ -2,7 +2,8 @@
 // Street View mit eingeblendeten Sonnen-, Mond- & Milchstraßenbahnen
 // ─────────────────────────────────────────────────────────────
 import { state, setState, onState } from './state.js';
-import { prefs } from './store.js';
+import { prefs, store } from './store.js';
+import { syncConfig, syncNow, syncStatus } from './sync.js';
 import { getDay, sunPos, moonPos, gcPos, observer } from './astro.js';
 import { $, $$, rad, deg, icon, fmtTime, fmtAz, fmtDeg, fmtDist, distance, bearing, rafThrottle, phaseOf, compass, esc } from './utils.js';
 import { COLORS, drawMoon, hexAlpha, roundRect } from './map.js';
@@ -35,14 +36,28 @@ export function initStreetView({ openSettings, toast }) {
   $('#sv-use-pos').onclick = () => { if (panoPos) setState({ lat: panoPos.lat, lng: panoPos.lng, placeName: '', activeSpotId: null }); };
   $('#sv-calib').onclick = () => calibDialog(redraw);
   window.__lpSvRedraw = redraw;
+  // Key kommt nachträglich an (Synchronisierung / anderes Fenster) → Street View starten
+  store.subscribe((why) => {
+    if ((why === 'sync' || why === 'settings') && active && !pano && prefs.get('gmapsKey')) activateStreetView();
+  });
   window.__lpOpenSettings = openSettings;
   window.__lpToast = toast;
 }
 
+let waitedForSync = false;
 export async function activateStreetView() {
   active = true;
-  const key = prefs.get('gmapsKey');
+  let key = prefs.get('gmapsKey');
   const empty = $('#sv-empty');
+  // Key kommt evtl. gerade über die Synchronisierung – kurz darauf warten
+  if (!key && syncConfig() && !waitedForSync) {
+    waitedForSync = true;
+    empty.innerHTML = '<div class="empty-card glass"><div class="empty-icon"><i class="spin"></i></div><h2>Street View wird vorbereitet …</h2><p>Lade deinen Google-Key aus der Synchronisierung.</p></div>';
+    empty.classList.remove('hidden');
+    await syncNow();
+    key = prefs.get('gmapsKey');
+    if (!active) return;
+  }
   if (!key) { showEmpty(); return; }
   empty.classList.add('hidden');
   try {
