@@ -1,11 +1,18 @@
 // Lichtplan Service Worker – App offline verfügbar (Netzwerk zuerst, Cache als Fallback)
-const CACHE = 'lichtplan-v5';
+const CACHE = 'lichtplan-v6';
 const SHELL = ['./', 'index.html', 'css/app.css', 'manifest.json', 'icons/icon.svg',
   'vendor/leaflet/leaflet.js', 'vendor/leaflet/leaflet.css', 'vendor/astronomy.browser.min.js',
   'js/main.js', 'js/utils.js', 'js/astro.js', 'js/store.js', 'js/state.js', 'js/services.js', 'js/map.js',
   'js/timebar.js', 'js/panels.js', 'js/projects.js', 'js/streetview.js', 'js/sky.js', 'js/ui.js', 'js/ai/chat.js', 'js/ai/provider.js', 'js/ai/tools.js', 'js/ai/exif.js', 'js/sync.js', 'js/config.js', 'vendor/qrcode.esm.js'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting())); });
-self.addEventListener('activate', (e) => { e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim())); });
+self.addEventListener('activate', (e) => {
+  e.waitUntil(caches.keys()
+    .then((ks) => Promise.all(ks.filter((k) => k !== CACHE && !k.endsWith('-tiles')).map((k) => caches.delete(k))))
+    .then(() => self.clients.claim())
+    // alle offenen Lichtplan-Fenster auf die neue Version bringen (alte Fenster könnten sonst Einstellungen überschreiben)
+    .then(() => self.clients.matchAll({ type: 'window' }))
+    .then((cs) => Promise.all(cs.map((c) => c.navigate(c.url.replace(/#.*$/, '')).catch(() => null)))));
+});
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   if (e.request.method !== 'GET') return;
