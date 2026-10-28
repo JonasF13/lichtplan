@@ -8,7 +8,7 @@
 // ─────────────────────────────────────────────────────────────
 import { distance, bearing, compass } from './utils.js';
 
-const CACHE_KEY = 'lichtplan.placeinfo.v1';
+const CACHE_KEY = 'lichtplan.placeinfo.v2'; // v2: gültige Bildgrößen für die Großansicht
 const TTL = 30 * 864e5;
 const keyOf = (lat, lng) => `${lat.toFixed(4)},${lng.toFixed(4)}`;
 const inflight = new Map();
@@ -74,7 +74,7 @@ export function loadPlaceInfo(lat, lng, { onPartial, force, hint = '' } = {}) {
         if (x?.length) { info.photos = x; emit(); return; }
         // Ersatz: Bilder der Wikipedia-Artikel in der Umgebung
         for (let i = 0; i < 40 && !info.wiki; i++) await wait(250);
-        info.photos = (info.wiki || []).filter((w) => w.thumb).map((w) => ({ thumb: w.thumb, full: w.thumb.replace(/\/\d+px-/, '/1280px-'), page: w.url, title: w.title, author: '', license: 'Wikipedia', dist: w.dist }));
+        info.photos = (info.wiki || []).filter((w) => w.thumb).map((w) => ({ thumb: w.thumb, full: w.origW > 1280 ? w.thumb.replace(/\/\d+px-/, '/1280px-') : (w.orig || w.thumb), orig: w.orig, page: w.url, title: w.title, author: '', license: 'Wikipedia', dist: w.dist }));
         emit();
       }),
       (async () => {
@@ -106,7 +106,7 @@ const LANG = { it: 'it', si: 'sl', hr: 'hr', fr: 'fr', es: 'es', pt: 'pt', gr: '
 async function photos(lat, lng) {
   let pages = [];
   for (const radius of [2500, 7000]) {
-    const r = await wmQuery(`https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggscoord=${lat}|${lng}&ggsradius=${radius}&ggsnamespace=6&ggslimit=40&prop=imageinfo|coordinates&iiprop=url|extmetadata|mime&iiurlwidth=640&iiextmetadatafilter=Artist|LicenseShortName|ImageDescription|ObjectName`);
+    const r = await wmQuery(`https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggscoord=${lat}|${lng}&ggsradius=${radius}&ggsnamespace=6&ggslimit=40&prop=imageinfo|coordinates&iiprop=url|extmetadata|mime|size&iiurlwidth=640&iiextmetadatafilter=Artist|LicenseShortName|ImageDescription|ObjectName`);
     pages = Object.values(r?.query?.pages || {});
     if (pages.length >= 4) break;
   }
@@ -118,7 +118,8 @@ async function photos(lat, lng) {
       const title = strip(md.ObjectName?.value) || p.title.replace(/^File:|\.[a-z]+$/gi, '').replace(/_/g, ' ');
       if (/\b(map|karte|mappa|logo|wappen|stemma|coat of arms|plan|diagram)\b/i.test(title)) return null;
       return {
-        thumb: ii.thumburl, full: ii.thumburl?.replace(/\/\d+px-/, '/1600px-') || ii.url, page: ii.descriptionurl,
+        // Wikimedia erlaubt nur Standardbreiten (z. B. 960/1280/1920) – sonst Original
+        thumb: ii.thumburl, full: ii.width > 1280 && ii.thumburl ? ii.thumburl.replace(/\/\d+px-/, '/1280px-') : ii.url, orig: ii.url, page: ii.descriptionurl,
         title, author: strip(md.Artist?.value).slice(0, 80), license: strip(md.LicenseShortName?.value),
         dist: c ? distance(lat, lng, c.lat, c.lon) : null,
       };
@@ -136,14 +137,14 @@ async function wiki(lat, lng, country, hint = '') {
   const langs = [...new Set(['de', 'en', LANG[country] || 'en'])];
   const words = norm(hint).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !/^(wasserfall|aussicht|parkplatz|sonnenuntergang|sonnenaufgang|spot|ueber|nach|blick|beim|from|with)$/.test(w));
   const lists = await Promise.all(langs.map((lang) => wmQuery(
-    `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggscoord=${lat}|${lng}&ggsradius=10000&ggslimit=10&prop=extracts|pageimages|coordinates|pageprops|info&inprop=url&ppprop=wikibase_item&exintro=1&explaintext=1&exsentences=3&exlimit=10&piprop=thumbnail&pithumbsize=320`,
+    `https://${lang}.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=geosearch&ggscoord=${lat}|${lng}&ggsradius=10000&ggslimit=10&prop=extracts|pageimages|coordinates|pageprops|info&inprop=url&ppprop=wikibase_item&exintro=1&explaintext=1&exsentences=3&exlimit=10&piprop=thumbnail|original&pithumbsize=320`,
   ).then((r) => Object.values(r?.query?.pages || {}).map((p) => ({ ...p, lang }))).catch(() => [])));
   const byItem = new Map();
   for (const p of lists.flat()) {
     if (!p.extract || p.extract.length < 40) continue;
     const c = p.coordinates?.[0];
     const item = p.pageprops?.wikibase_item || `${p.lang}:${p.title}`;
-    const entry = { title: p.title, lang: p.lang, extract: p.extract.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim(), url: p.fullurl, thumb: p.thumbnail?.source, dist: c ? distance(lat, lng, c.lat, c.lon) : null };
+    const entry = { title: p.title, lang: p.lang, extract: p.extract.replace(/\s*\([^)]*\)/g, '').replace(/\s+/g, ' ').trim(), url: p.fullurl, thumb: p.thumbnail?.source, orig: p.original?.source, origW: p.original?.width, dist: c ? distance(lat, lng, c.lat, c.lon) : null };
     const prev = byItem.get(item);
     const rank = (e) => langs.indexOf(e.lang); // Deutsch bevorzugt
     if (!prev || rank(entry) < rank(prev)) byItem.set(item, entry);

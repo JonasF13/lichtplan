@@ -20,16 +20,32 @@ const km = (m) => (m == null ? '' : fmtDist(m));
 // ── Großansicht eines Fotos ─────────────────────────────────
 export function openPhoto(ph, all = []) {
   let i = Math.max(0, all.indexOf(ph));
-  const body = el(`<div class="lightbox"><img alt=""><div class="lb-meta"></div></div>`);
+  const body = el(`<div class="lightbox"><div class="lb-stage"><img alt="">${all.length > 1 ? `<button class="lb-nav lb-prev" title="Vorheriges Foto">${icon('chev-left')}</button><button class="lb-nav lb-next" title="Nächstes Foto">${icon('chev-right')}</button>` : ''}</div><div class="lb-meta"></div></div>`);
+  let titleEl = null;
   const show = () => {
     const p = all[i] || ph;
-    body.querySelector('img').src = p.full || p.thumb;
-    body.querySelector('.lb-meta').innerHTML = `<b>${esc(p.title)}</b><span>${p.author ? 'Foto: ' + esc(p.author) + ' · ' : ''}${esc(p.license || '')}${p.dist != null ? ' · ' + km(p.dist) + ' vom Spot' : ''}</span>${p.page ? `<a href="${p.page}" target="_blank" rel="noopener">${icon('ext')}Auf Wikimedia Commons ansehen</a>` : ''}`;
+    const img = body.querySelector('img');
+    // Ausweichkette: Großansicht → Original → Vorschaubild
+    const tries = [p.full, p.orig, p.thumb].filter((u, k, a) => u && a.indexOf(u) === k);
+    let t = 0;
+    img.onerror = () => { if (++t < tries.length) img.src = tries[t]; };
+    img.classList.add('loading');
+    img.onload = () => img.classList.remove('loading');
+    img.src = tries[0];
+    body.querySelector('.lb-meta').innerHTML = `<b>${esc(p.title)}</b><span>${p.author ? 'Foto: ' + esc(p.author) + ' · ' : ''}${esc(p.license || '')}${p.dist != null ? ' · ' + km(p.dist) + ' vom Spot' : ''}</span>${p.page ? `<a href="${p.page}" target="_blank" rel="noopener">${icon('ext')}Auf ${p.license === 'Wikipedia' ? 'Wikipedia' : 'Wikimedia Commons'} ansehen</a>` : ''}`;
+    if (titleEl) titleEl.textContent = all.length > 1 ? `Foto ${i + 1} von ${all.length}` : 'Foto';
   };
-  show();
+  const go = (d) => { if (all.length < 2) return; i = (i + d + all.length) % all.length; show(); };
+  body.querySelector('.lb-prev')?.addEventListener('click', () => go(-1));
+  body.querySelector('.lb-next')?.addEventListener('click', () => go(1));
+  let tx = null; // Wischen am iPhone
+  body.addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
+  body.addEventListener('touchend', (e) => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1); tx = null; });
   const { node } = modal({ title: 'Foto', body, wide: true });
   node.querySelector('.modal').classList.add('photo-modal');
-  const key = (e) => { if (e.key === 'ArrowRight') { i = (i + 1) % all.length; show(); } if (e.key === 'ArrowLeft') { i = (i - 1 + all.length) % all.length; show(); } };
+  titleEl = node.querySelector('header h2');
+  show();
+  const key = (e) => { if (e.key === 'ArrowRight') go(1); if (e.key === 'ArrowLeft') go(-1); };
   document.addEventListener('keydown', key);
   new MutationObserver((_, o) => { if (!document.body.contains(node)) { document.removeEventListener('keydown', key); o.disconnect(); } }).observe(document.body, { childList: true, subtree: true });
 }
