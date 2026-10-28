@@ -14,6 +14,8 @@ import { reverseName } from './services.js';
 import { syncStatus, onSync, syncConfig, syncNow } from './sync.js';
 import { HOSTED_URL } from './config.js';
 import { relTime } from './utils.js';
+import { renderPlaceCard } from './placeview.js';
+import { profiles as aiProfiles } from './ai/provider.js';
 
 let nav = { view: 'home', projectId: null, spotId: null, tab: 'spots', q: '', status: '', tag: '', sort: prefs.get('spotSort') || 'manual' };
 let api;
@@ -371,6 +373,8 @@ function renderSpot() {
         <div class="rating" id="sp-rating">${[1, 2, 3, 4, 5].map((i) => `<button data-v="${i}" class="${i <= (s.rating || 0) ? 'on' : ''}">★</button>`).join('')}</div>
       </div>
 
+      <section class="card place-card" id="sp-place"></section>
+
       <section class="card">
         <h3>${icon('clock')}Termine</h3>
         <div class="shoot-list" id="sp-shoots"></div>
@@ -414,6 +418,9 @@ function renderSpot() {
       <p class="muted small pad">Angelegt ${new Date(s.created).toLocaleDateString('de-AT')}${s.source ? ` · Quelle: ${esc(s.source)}` : ''}</p>
     </div>
   </div>`);
+
+  // Ortsinfo (Fotos, Fakten, Anreise, Hinweise)
+  renderPlaceCard(node.querySelector('#sp-place'), s, { aiAvailable: aiProfiles().length > 0 });
 
   // Termine
   const list = node.querySelector('#sp-shoots');

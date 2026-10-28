@@ -4,6 +4,7 @@
 import { state, setState, onState } from './state.js';
 import { store, prefs } from './store.js';
 import { getDay, sunPos, moonPos, gcPos } from './astro.js';
+import { popupContent, setParkingHandler } from './placeview.js';
 import { $, $$, rad, fmtTime, fmtAz, fmtDist, distance, bearing, rafThrottle, esc, icon } from './utils.js';
 
 const L = window.L;
@@ -23,7 +24,9 @@ export const COLORS = {
   moonrise: '#a5d8ff', moonset: '#7aa2d6', moon: '#f1f3f5', milky: '#c792ea', target: '#2ee59d',
 };
 
-export function initMap({ onSpotClick, onContext }) {
+let parkLayer, onDetails;
+export function initMap({ onSpotClick, onContext, onSpotDetails }) {
+  onDetails = onSpotDetails;
   const last = prefs.get('last');
   map = L.map('map', { zoomControl: false, attributionControl: true, worldCopyJump: true, zoomSnap: 0.5 })
     .setView([state.lat, state.lng], last?.zoom ?? 13);
@@ -44,6 +47,13 @@ export function initMap({ onSpotClick, onContext }) {
   targetMarker.on('drag', (e) => { const p = e.target.getLatLng(); setState({ target: { lat: p.lat, lng: p.lng, elev: null } }); });
 
   spotLayer = L.layerGroup().addTo(map);
+  parkLayer = L.layerGroup().addTo(map);
+  setParkingHandler((list, spot) => {
+    parkLayer.clearLayers();
+    list.forEach((p) => L.marker([p.lat, p.lng], { icon: L.divIcon({ className: 'park-pin', html: '<b>P</b>', iconSize: [22, 22], iconAnchor: [11, 11] }) })
+      .bindTooltip(`${esc(p.name || 'Parkplatz')}${p.fee ? ' · ' + p.fee : ''}`, { direction: 'top', className: 'lp-tip' }).addTo(parkLayer));
+    fitSpots([spot, ...list]);
+  });
   renderSpots(onSpotClick);
   store.subscribe(() => renderSpots(onSpotClick));
 
@@ -56,6 +66,10 @@ export function initMap({ onSpotClick, onContext }) {
   map.on('moveend', () => { const l = prefs.get('last') || {}; prefs.set('last', { ...l, zoom: map.getZoom() }); });
 
   canvas = $('#map-overlay');
+  // Kompass in eigene Kartenebene: über den Kacheln, unter Markierungen und Vorschaufenstern
+  const pane = map.createPane('lpCompass');
+  pane.style.zIndex = 450; pane.style.pointerEvents = 'none';
+  pane.appendChild(canvas);
   ctx = canvas.getContext('2d');
   const redraw = rafThrottle(draw);
   map.on('move zoom resize viewreset zoomanim', redraw);
@@ -113,8 +127,11 @@ function updateTarget() {
   } else if (map.hasLayer(targetMarker)) map.removeLayer(targetMarker);
 }
 
+let popupSpotId = null;
 function renderSpots(onSpotClick) {
+  const keep = popupSpotId; // offenes Vorschaufenster nach dem Neuzeichnen wieder öffnen
   spotLayer.clearLayers();
+  popupSpotId = keep;
   if (!prefs.get('layers').spots) return;
   for (const s of store.spots) {
     const p = s.projectId ? store.project(s.projectId) : null;
@@ -126,14 +143,18 @@ function renderSpots(onSpotClick) {
       icon: L.divIcon({ className: 'spot-pin', html: `<div style="--c:${color}" class="${s.status === 'erledigt' ? 'done' : ''}">${s.rating >= 4 ? '★' : ''}</div>`, iconSize: [18, 18], iconAnchor: [9, 9] }),
     });
     m.bindTooltip(`<b>${esc(s.name)}</b>${p ? `<br><span style="color:${color}">${esc(p.name)}</span>` : ''}`, { direction: 'top', offset: [0, -8], className: 'lp-tip' });
-    m.on('click', (e) => { L.DomEvent.stopPropagation(e); onSpotClick(s.id); });
+    m.bindPopup(() => popupContent(s, p, { onOpen: () => { m.closePopup(); onDetails ? onDetails(s.id) : onSpotClick(s.id); } }), { className: 'lp-popup', maxWidth: 290, minWidth: 260, autoPanPaddingTopLeft: [20, 90], autoPanPaddingBottomRight: [20, 200] });
+    m.on('click', (e) => { L.DomEvent.stopPropagation(e); parkLayer.clearLayers(); popupSpotId = s.id; onSpotClick(s.id); });
+    m.on('popupclose', () => { setTimeout(() => { if (popupSpotId === s.id && !spotLayer.hasLayer(m)) return; if (popupSpotId === s.id && !m.isPopupOpen()) popupSpotId = null; }, 0); });
     spotLayer.addLayer(m);
+    if (keep === s.id) setTimeout(() => m.openPopup(), 0);
   }
 }
 
 // ── Overlay-Zeichnung ───────────────────────────────────────
 function draw() {
-  const box = canvas.parentElement.getBoundingClientRect();
+  const box = $('#view-map').getBoundingClientRect();
+  if (map) L.DomUtil.setPosition(canvas, map.containerPointToLayerPoint([0, 0])); // fest am Bildschirm, trotz Verschieben der Ebene
   const dpr = window.devicePixelRatio || 1;
   if (canvas.width !== Math.round(box.width * dpr) || canvas.height !== Math.round(box.height * dpr)) {
     canvas.width = Math.round(box.width * dpr); canvas.height = Math.round(box.height * dpr);

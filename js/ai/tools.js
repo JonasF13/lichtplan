@@ -10,6 +10,7 @@ import {
 } from '../astro.js';
 import { searchPlaces, elevations, forecast, timezoneAt } from '../services.js';
 import { getTideModel, tideDay, tideEvents } from '../tides.js';
+import { loadPlaceInfo } from '../placeinfo.js';
 import {
   zonedParts, zonedToUtc, dayKey, fmtTime, fmtDuration, distance, bearing, elevationAngle, phaseOf, compass, wrap360, startOfLocalDay,
 } from '../utils.js';
@@ -322,6 +323,27 @@ const TOOLS = [
         out.matches = matches.slice(0, 40);
       }
       return out;
+    },
+  },
+  {
+    name: 'get_place_info',
+    description: 'Facts and practical info about a place/spot: nearby Wikipedia articles (facts), nearest parking (distance, fee), walking time from parking, public transport, and on-site notes (nature reserve, drone restrictions near airfields, toilets, opening hours). Use for questions about how to get there, where to park, what to know.',
+    parameters: { ...LOC },
+    label: (a, r) => `Ortsinfo · ${r?.location?.name || ''}`,
+    async run(a) {
+      const L = await loc(a);
+      const s = a.spot_id ? store.spot(a.spot_id) : null;
+      const info = await loadPlaceInfo(L.lat, L.lng, { hint: s ? `${s.name} ${s.notes || ''}` : L.name });
+      return {
+        location: locInfo(L),
+        facts: (info.wiki || []).map((w) => ({ title: w.title, distance_m: r0(w.dist), text: w.extract, url: w.url })),
+        parking: (info.parking || []).map((p) => ({ name: p.name || 'Parkplatz', distance_m: r0(p.dist), direction: p.dir, fee: p.fee || 'unbekannt', capacity: p.capacity, navigation: `https://www.google.com/maps/dir/?api=1&destination=${p.lat},${p.lng}` })),
+        walk_from_nearest_parking: info.walk ? { minutes: info.walk.minutes, meters: info.walk.meters } : null,
+        public_transport: (info.transit || []).map((t) => ({ name: t.name, type: t.type === 'train' ? 'Bahn' : 'Bus', distance_m: r0(t.dist) })),
+        notes: (info.notes || []).map((n) => n.text),
+        photos_available: (info.photos || []).length,
+        sources: 'Wikipedia, OpenStreetMap, Wikimedia Commons',
+      };
     },
   },
   {

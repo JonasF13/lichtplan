@@ -20,7 +20,11 @@ import { $, $$, hydrateIcons, icon, esc, parseCoords, debounce, fmtCoord, pickFi
 hydrateIcons();
 
 // ── Module starten ──────────────────────────────────────────
-initMap({ onSpotClick: (id) => { selectSpot(id); openSpot(id); }, onContext: contextMenu });
+initMap({
+  onSpotClick: (id) => { selectSpot(id, { keepView: true }); openSpot(id); },
+  onSpotDetails: (id) => { openSpot(id); if (innerWidth < 900) setMobileTab('projects'); },
+  onContext: contextMenu,
+});
 initTimebar({ onAddShoot: addShootToActive });
 initPanels();
 initProjects({ selectSpot, fitSpots, importSunSurveyor, importFile, openSettings });
@@ -43,7 +47,7 @@ function selectSpot(id, opts = {}) {
     target: s.target ? { ...s.target } : null, activeSpotId: s.id, activeProjectId: s.projectId,
     ...(time ? { time } : {}),
   });
-  if (state.view === 'map') flyTo(s.lat, s.lng);
+  if (state.view === 'map' && !opts.keepView) flyTo(s.lat, s.lng);
   if (innerWidth < 900 && document.body.dataset.mobileTab === 'projects') setMobileTab('map');
 }
 
