@@ -1,0 +1,242 @@
+/* ─────────────────────────────────────────────────────────────
+   Specula – Layouts
+   desktop: Mac / iPad quer      (3 Spalten)
+   tablet:  iPhone Duo offen, iPad hochkant, kleine Fenster (Symbolleiste + Panel + Bühne)
+   phone:   iPhone, iPhone Duo zugeklappt (Tab-Leiste unten, je ein Bildschirm)
+   ───────────────────────────────────────────────────────────── */
+
+#rail, #mobile-nav { display: none; }
+.only-touch { display: none !important; }
+body.touch:not(.no-ar) .only-touch { display: inline-flex !important; }
+#insp-tabs .ai-chip { display: none; }
+
+/* ── Fokus-Leiste & Fokus-Karte (alle Layouts) ──────────── */
+#focus-bar { position: absolute; z-index: 610; top: 12px; right: 62px; display: flex; gap: 2px; padding: 4px; border-radius: 13px; }
+#focus-bar button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 9px; color: var(--text2); font-weight: 600; font-size: 12.5px; transition: .15s; white-space: nowrap; }
+#focus-bar button:hover { color: var(--text); background: rgba(255,255,255,.07); }
+#focus-bar button .ic { width: 15px; height: 15px; }
+#focus-bar button.active { color: #111; }
+#focus-bar button[data-focus="all"].active { background: rgba(255,255,255,.85); }
+#focus-bar button[data-focus="sun"].active { background: linear-gradient(135deg, #ffd166, #ff9f43); }
+#focus-bar button[data-focus="moon"].active { background: linear-gradient(135deg, #e3ecff, #a5c4f2); }
+#focus-bar button[data-focus="milky"].active { background: linear-gradient(135deg, #e0b8ff, #a77bdc); }
+body[data-view="stars"] #focus-bar, body[data-view="ar"] #focus-bar { display: none; }
+#location-chip { max-width: calc(100% - 520px); min-width: 230px; }
+@media (max-width: 1500px) {
+  body[data-layout="desktop"] #focus-bar button span { display: none; }
+  body[data-layout="desktop"] #focus-bar button.active span { display: inline; }
+  body[data-layout="desktop"] #location-chip { max-width: calc(100% - 330px); }
+}
+
+#focus-card { position: absolute; z-index: 600; top: 70px; left: 12px; width: 310px; max-height: calc(100% - 300px); overflow: auto; padding: 10px; border-radius: 14px; display: grid; gap: 2px; }
+#focus-card.hidden { display: none; }
+body:not([data-focus="all"]) #map-legend { display: none; }
+body[data-view="stars"] #focus-card, body[data-view="ar"] #focus-card { display: none; }
+.fc-head { display: flex; align-items: center; gap: 8px; padding: 2px 4px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+.fc-head .ic { width: 18px; height: 18px; }
+body[data-focus="sun"] .fc-head .ic { color: #ffd166; } body[data-focus="moon"] .fc-head .ic { color: #cfe0ff; } body[data-focus="milky"] .fc-head .ic { color: #c792ea; }
+.fc-head b { font-size: 14px; } .fc-head span { margin-left: auto; color: var(--text3); font-size: 11.5px; }
+.fc-row { display: grid; grid-template-columns: 10px 1fr auto auto; align-items: center; gap: 8px; width: 100%; text-align: left; padding: 6px 6px; border-radius: 8px; font-size: 12.5px; }
+.fc-row:hover { background: rgba(255,255,255,.07); }
+.fc-row i { width: 8px; height: 8px; border-radius: 50%; }
+.fc-row:not(:has(i))::before { content: ""; }
+.fc-row span { color: var(--text2); } .fc-row b { font-variant-numeric: tabular-nums; } .fc-row em { font-style: normal; color: var(--text3); font-size: 11.5px; min-width: 64px; text-align: right; }
+.fc-row.best { background: rgba(199,146,234,.14); border: 1px solid rgba(199,146,234,.35); }
+.fc-note { color: var(--text3); font-size: 12px; padding: 4px 6px; }
+.fc-actions { display: flex; gap: 6px; padding-top: 6px; }
+
+/* ── Sterne & Live ──────────────────────────────────────── */
+#view-stars { background: #04060c; }
+#stars-canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; }
+#view-ar { background: #000; overflow: hidden; }
+#ar-video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+#ar-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+#ar-ui { position: absolute; inset: 0; pointer-events: none; }
+#ar-ui > * { pointer-events: auto; }
+.ar-card { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); width: min(420px, 90%); padding: 24px; border-radius: 18px; text-align: center; display: grid; gap: 10px; justify-items: center; }
+.ar-card h2 { margin: 4px 0 0; font-size: 19px; } .ar-card p { margin: 0; color: var(--text2); }
+.ar-top { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; justify-content: space-between; align-items: center; pointer-events: none; }
+.ar-top > * { pointer-events: auto; }
+.ar-mode { background: rgba(10,14,22,.6); backdrop-filter: blur(14px); }
+.ar-mode button { height: 32px; }
+#ar-cal { width: 42px; height: 42px; border-radius: 12px; }
+.ar-readout { position: absolute; left: 50%; transform: translateX(-50%); bottom: calc(var(--tb-h, 190px) + 18px); padding: 8px 14px; border-radius: 14px; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 12px; font-size: 13px; max-width: 92%; text-align: center; }
+.ar-readout b { font-size: 15px; } .ar-readout span { color: var(--text2); } .ar-readout em { flex-basis: 100%; font-style: normal; color: var(--warn); font-size: 12px; }
+.ar-calbox { position: absolute; top: 64px; right: 12px; width: min(320px, calc(100% - 24px)); padding: 14px; border-radius: 14px; display: grid; gap: 8px; }
+.ar-calbox h4 { margin: 0; } .ar-calbox input[type=range] { width: 100%; }
+body[data-view="ar"] #location-chip, body[data-view="stars"] #location-chip { display: none; }
+
+/* ── Projekt-Titelbilder (alle Layouts) ─────────────────── */
+.pc-cover { height: 86px; margin: -11px -12px 9px -14px; background-size: cover; background-position: center; position: relative; }
+.pc-cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 40%, rgba(17,23,37,.85)); }
+.si-thumb { width: 42px; height: 42px; border-radius: 9px; background-size: cover; background-position: center; flex: none; border: 1px solid var(--line); }
+
+/* ── Touch-Bedienung (iPad, iPhone, Duo) ────────────────── */
+body.touch .btn { min-height: 38px; }
+body.touch .btn.sm { min-height: 34px; }
+body.touch .icon-btn { width: 40px; height: 40px; }
+body.touch .tool { width: 42px; height: 42px; }
+body.touch .chip { height: 32px; padding: 0 12px; }
+body.touch .ev { padding: 9px 8px; }
+body.touch .spot-item { padding: 10px 9px; }
+body.touch input, body.touch select, body.touch textarea { font-size: 16px; } /* verhindert Zoom auf iOS */
+body.touch .slider-wrap input[type=range]::-webkit-slider-thumb { width: 10px; height: 40px; border-radius: 5px; }
+body.touch .leaflet-control-zoom { display: none; }
+
+/* ═════════════ TABLET · iPhone Duo offen · iPad hochkant ═════════════ */
+body[data-layout="tablet"] { --panel-w: clamp(320px, 42vw, 410px); --top-h: 54px; }
+body[data-layout="tablet"] #app {
+  grid-template-columns: 76px var(--panel-w) 1fr;
+  grid-template-rows: calc(var(--top-h) + env(safe-area-inset-top)) 1fr;
+  grid-template-areas: "top top top" "rail panel stage";
+  transition: grid-template-columns .22s ease;
+}
+body[data-layout="tablet"][data-panel="none"] #app { grid-template-columns: 76px 0 1fr; }
+body[data-layout="tablet"] #topbar { padding-top: env(safe-area-inset-top); padding-left: max(14px, env(safe-area-inset-left)); padding-right: max(14px, env(safe-area-inset-right)); gap: 10px; }
+body[data-layout="tablet"] .brand { min-width: 0; }
+body[data-layout="tablet"] #btn-settings, body[data-layout="tablet"] #btn-install { display: none; }
+body[data-layout="tablet"] .top-actions .lbl { display: none; }
+body[data-layout="tablet"] #view-switch button.active .lbl { display: inline; }
+body[data-layout="tablet"] #rail {
+  grid-area: rail; display: flex; flex-direction: column; align-items: stretch; gap: 2px; padding: 8px 6px calc(10px + env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left));
+  background: #0d121e; border-right: 1px solid var(--line); overflow-y: auto;
+}
+#rail button { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 9px 2px 8px; border-radius: 12px; color: var(--text3); font-size: 10.5px; font-weight: 600; transition: .15s; }
+#rail button .ic { width: 22px; height: 22px; }
+#rail button:hover { color: var(--text); background: rgba(255,255,255,.05); }
+#rail button.active { color: var(--accent); background: rgba(255,159,67,.13); }
+#rail button[data-rail="ai"].active { color: #c9c3ff; background: rgba(162,155,254,.16); }
+#rail .rail-sep { height: 1px; background: var(--line); margin: 6px 10px; }
+#rail .rail-grow { flex: 1; }
+body[data-layout="tablet"] #sidebar, body[data-layout="tablet"] #inspector { grid-area: panel; border-right: 1px solid var(--line); border-left: 0; min-width: 0; }
+body[data-layout="tablet"]:not([data-panel="projects"]) #sidebar { display: none; }
+body[data-layout="tablet"]:not([data-panel="info"]) #inspector { display: none; }
+body[data-layout="tablet"] #inspector .tabs { display: none; }
+body[data-layout="tablet"] #stage { grid-area: stage; }
+body[data-layout="tablet"] #location-chip { max-width: calc(100% - 470px); min-width: 200px; }
+body[data-layout="tablet"] #focus-bar button span { display: none; }
+body[data-layout="tablet"] #focus-bar button.active span { display: inline; }
+body[data-layout="tablet"] #location-chip { max-width: calc(100% - 300px); }
+body[data-layout="tablet"] .sb, body[data-layout="tablet"] .insp-body { font-size: 14px; }
+
+/* ═════════════ PHONE · iPhone · iPhone Duo zugeklappt ═════════════ */
+body[data-layout="phone"] { --top-h: 50px; font-size: 14px; }
+body[data-layout="phone"] #app {
+  grid-template-columns: 1fr;
+  grid-template-rows: calc(var(--top-h) + env(safe-area-inset-top)) 1fr calc(58px + env(safe-area-inset-bottom));
+  grid-template-areas: "top" "main" "nav";
+}
+body[data-layout="phone"] #topbar { padding: env(safe-area-inset-top) max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left)); gap: 6px; }
+body[data-layout="phone"] .brand { min-width: 0; }
+body[data-layout="phone"] .brand span { display: none; }
+body[data-layout="phone"] .top-actions { gap: 5px; }
+body[data-layout="phone"] .top-actions .lbl { display: none; }
+body[data-layout="phone"] #btn-settings, body[data-layout="phone"] #btn-install, body[data-layout="phone"] #btn-locate { display: none; }
+body[data-layout="phone"] #view-switch button[data-view="stars"], body[data-layout="phone"] #view-switch button[data-view="ar"] { display: none !important; }
+body[data-layout="phone"]:not([data-screen="map"]) #view-switch { display: none; }
+body[data-layout="phone"] #view-switch button { padding: 0 9px; }
+body[data-layout="phone"] .btn, body[data-layout="phone"] .icon-btn { height: 36px; }
+body[data-layout="phone"] #search { height: 36px; font-size: 16px; }
+body[data-layout="phone"] #sidebar, body[data-layout="phone"] #stage, body[data-layout="phone"] #inspector { grid-area: main; border: 0; }
+body[data-layout="phone"]:not([data-screen="projects"]) #sidebar { display: none; }
+body[data-layout="phone"]:not([data-screen="info"]) #inspector { display: none; }
+body[data-layout="phone"][data-screen="projects"] #stage, body[data-layout="phone"][data-screen="info"] #stage { display: none; }
+
+/* Tab-Leiste unten (wie Instagram) */
+body[data-layout="phone"] #mobile-nav {
+  grid-area: nav; display: flex; background: rgba(12,16,26,.97); border-top: 1px solid var(--line);
+  padding: 4px max(6px, env(safe-area-inset-left)) env(safe-area-inset-bottom) max(6px, env(safe-area-inset-right));
+}
+#mobile-nav button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--text3); font-size: 10.5px; font-weight: 600; border-radius: 12px; transition: color .15s; }
+#mobile-nav button .ic { width: 24px; height: 24px; }
+#mobile-nav button.active { color: var(--accent); }
+#mobile-nav button.live-tab .ic { width: 26px; height: 26px; }
+body.no-ar #mobile-nav button.live-tab { opacity: .45; }
+
+/* Bühne am Handy */
+body.compact-stage #location-chip { top: 8px; left: 8px; max-width: calc(100% - 66px); min-width: 0; padding: 6px 6px 6px 10px; border-radius: 12px; }
+body.compact-stage .loc-name { font-size: 13px; } body.compact-stage .loc-sub { font-size: 11px; }
+body.compact-stage .loc-actions .chip-btn { height: 30px; }
+body.compact-stage #map-tools, body.compact-stage #sv-tools { top: 8px; right: 8px; padding: 3px; }
+body.compact-stage #map-tools .tool { width: 38px; height: 38px; }
+body.compact-stage #map-legend { display: none; }
+body.compact-stage #focus-bar { top: 66px; left: 8px; right: auto; padding: 3px; }
+body.compact-stage #focus-bar button { height: 32px; padding: 0 9px; }
+body.compact-stage #focus-bar button span { display: none; }
+body.compact-stage #focus-bar button.active span { display: inline; }
+body.compact-stage #focus-card { top: 108px; left: 8px; right: 56px; width: auto; max-height: calc(100% - 108px - var(--tb-h, 150px) - 22px); font-size: 13px; }
+body.compact-stage .hint { display: none; }
+
+/* Zeitleiste kompakt (aufklappbar) */
+body.compact-stage #timebar { left: 6px; right: 6px; bottom: 6px; padding: 8px 10px 10px; border-radius: 16px; gap: 6px; }
+body.compact-stage .tb-head { flex-wrap: nowrap; gap: 6px; }
+body.compact-stage .tb-date-btn { font-size: 12.5px; padding: 3px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: min(34vw, 190px); }
+body.compact-stage .tb-time .big { font-size: 20px; }
+body.compact-stage #tb-tz, body.compact-stage #tb-phase { display: none; }
+body.compact-stage .tb-actions { gap: 4px; flex-wrap: nowrap; margin-left: auto; }
+body.compact-stage .tb-actions .chips, body.compact-stage #tb-now .lbl { display: none; }
+body.compact-stage #tb-add-shoot { font-size: 0; gap: 0; padding: 0 9px; }
+body.compact-stage #tb-add-shoot .ic { width: 17px; height: 17px; }
+body.compact-stage #tb-now { font-size: 0; gap: 0; padding: 0 9px; }
+body.compact-stage #tb-now .ic { width: 17px; height: 17px; }
+body.compact-stage .tb-lbl { display: none; }
+body.compact-stage #timebar .tb-row:nth-child(3) { display: none; }
+body.compact-stage #timebar.expanded .tb-row:nth-child(3) { display: flex; }
+body.compact-stage #timebar.expanded .tb-actions .chips { display: flex; position: absolute; left: 10px; right: 10px; top: -42px; overflow-x: auto; flex-wrap: nowrap; }
+body.compact-stage #tb-expand .ic { transform: rotate(-90deg); transition: transform .2s; }
+body.compact-stage #timebar.expanded #tb-expand .ic { transform: rotate(90deg); }
+#tb-expand { display: none; }
+body.compact-stage #tb-expand { display: inline-flex; }
+
+/* Projekte am Handy: groß, lesbar, Bilder (Instagram-artig) */
+body[data-layout="phone"] .sb-head { padding: 12px 14px 10px; }
+body[data-layout="phone"] .sb-head h2 { font-size: 22px; letter-spacing: -.02em; }
+body[data-layout="phone"] .sb-body { padding: 0 12px calc(16px + env(safe-area-inset-bottom)); }
+body[data-layout="phone"] .project-list { gap: 12px; }
+body[data-layout="phone"] .project-card { padding: 13px 14px 13px 16px; border-radius: 16px; }
+body[data-layout="phone"] .pc-cover { height: 150px; margin: -13px -14px 11px -16px; }
+body[data-layout="phone"] .pc-top { font-size: 17px; }
+body[data-layout="phone"] .pc-meta, body[data-layout="phone"] .pc-date { font-size: 13px; }
+body[data-layout="phone"] .spot-item { padding: 10px 8px; border-radius: 14px; }
+body[data-layout="phone"] .si-name { font-size: 15.5px; } body[data-layout="phone"] .si-sub { font-size: 12.5px; }
+body[data-layout="phone"] .si-thumb { width: 56px; height: 56px; border-radius: 12px; }
+body[data-layout="phone"] .title-input { font-size: 24px !important; }
+body[data-layout="phone"] .card { padding: 14px; border-radius: 16px; }
+body[data-layout="phone"] .card h3 { font-size: 12.5px; }
+body[data-layout="phone"] .place-card .ph-strip { margin: 0 -14px; padding: 0 14px 8px; scroll-padding: 14px; gap: 8px; }
+body[data-layout="phone"] .place-card .ph, body[data-layout="phone"] .place-card .ph-skel { width: 82vw; height: 56vw; max-height: 300px; border-radius: 14px; }
+body[data-layout="phone"] .pi-wk p, body[data-layout="phone"] .pi-notes-list li, body[data-layout="phone"] .pk em { font-size: 13.5px; }
+body[data-layout="phone"] .sb-foot { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+body[data-layout="phone"] .sync-foot { padding-bottom: 12px; }
+
+/* Infos am Handy: Reiter als wischbare Chips */
+body[data-layout="phone"] #insp-tabs { gap: 6px; padding: 10px 12px; overflow-x: auto; scroll-snap-type: x proximity; border-bottom: 1px solid var(--line); scrollbar-width: none; }
+body[data-layout="phone"] #insp-tabs::-webkit-scrollbar { display: none; }
+body[data-layout="phone"] #insp-tabs button { flex: none; padding: 7px 15px; border-radius: 18px; background: rgba(255,255,255,.06); border: 1px solid var(--line); margin: 0; font-size: 13.5px; scroll-snap-align: start; }
+body[data-layout="phone"] #insp-tabs button.active { background: var(--grad); color: #1b0f08; border-color: transparent; }
+body[data-layout="phone"] #insp-tabs .ai-chip { display: inline-block; background: linear-gradient(135deg, rgba(162,155,254,.25), rgba(84,160,255,.2)); color: #d9d6ff; }
+body[data-layout="phone"] .insp-body { padding: 12px 12px calc(16px + env(safe-area-inset-bottom)); font-size: 14.5px; }
+body[data-layout="phone"] .hero-title { font-size: 20px; }
+body[data-layout="phone"] .grid3 b { font-size: 17px; }
+body[data-layout="phone"] .ev { font-size: 14px; }
+
+/* Modals am Handy: als Blatt von unten */
+body[data-layout="phone"] .modal-backdrop { align-items: flex-end; padding: 0; }
+body[data-layout="phone"] .modal { max-width: none !important; width: 100%; border-radius: 20px 20px 0 0; max-height: 92vh; padding-bottom: env(safe-area-inset-bottom); }
+body[data-layout="phone"] .photo-modal { border-radius: 0; max-height: 100vh; height: 100vh; }
+body[data-layout="phone"] .toast { max-width: 90vw; }
+body[data-layout="phone"] #toast-root { top: calc(60px + env(safe-area-inset-top)); }
+
+/* Fokus-Karte einklappbar */
+.fc-head { cursor: pointer; user-select: none; }
+.fc-head .fc-sum { display: none; margin-left: auto; color: var(--text); font-size: 12px; font-weight: 600; }
+.fc-head .fc-chev { width: 14px; height: 14px; color: var(--text3); transition: transform .2s; transform: rotate(90deg); }
+#focus-card.collapsed .fc-body, #focus-card.collapsed .fc-head > span:not(.fc-sum) { display: none; }
+#focus-card.collapsed .fc-head { border-bottom: 0; margin-bottom: 0; padding-bottom: 2px; }
+#focus-card.collapsed .fc-head .fc-sum { display: inline; }
+#focus-card.collapsed .fc-head .fc-chev { transform: rotate(0deg); margin-left: 6px; }
+body.compact-stage #focus-card.collapsed { right: auto; max-width: calc(100% - 70px); }
+/* schmale Bühne (z. B. iPhone Duo aufgeklappt): Fokus-Leiste unter die Ortsanzeige */
+body.compact-stage #focus-bar { top: 66px; left: 8px; right: auto; padding: 3px; }
+body.compact-stage #focus-card { top: 108px; left: 8px; }
+body.compact-stage #location-chip { max-width: calc(100% - 66px); }

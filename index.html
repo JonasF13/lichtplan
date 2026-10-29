@@ -17,8 +17,10 @@
   <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png" />
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
   <link rel="stylesheet" href="css/app.css" />
+  <link rel="stylesheet" href="css/stars.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
 </head>
-<body data-mobile-tab="map">
+<body data-layout="desktop" data-screen="map" data-panel="projects">
   <div id="app">
     <!-- ───────────── Header ───────────── -->
     <header id="topbar">
@@ -40,6 +42,8 @@
           <button data-view="map" class="active"><span data-icon="map"></span><span class="lbl">Karte</span></button>
           <button data-view="sv"><span data-icon="streetview"></span><span class="lbl">Street View</span></button>
           <button data-view="sky"><span data-icon="sky"></span><span class="lbl">Himmel</span></button>
+          <button data-view="stars"><span data-icon="stars"></span><span class="lbl">Sterne</span></button>
+          <button data-view="ar" class="only-touch"><span data-icon="camera"></span><span class="lbl">Live</span></button>
         </div>
         <button class="btn ai-btn" id="btn-ai" title="KI-Assistent (K)"><span data-icon="sparkles"></span><span class="lbl">Assistent</span></button>
         <button class="btn primary" id="btn-save-spot" title="Ort &amp; Zeit speichern (S)"><span data-icon="bookmark-plus"></span><span class="lbl">Spot speichern</span></button>
@@ -47,6 +51,22 @@
         <button class="btn icon-btn" id="btn-settings" title="Einstellungen"><span data-icon="settings"></span></button>
       </div>
     </header>
+
+    <!-- ───────────── Symbolleiste (Tablet / iPhone Duo / iPad) ───────────── -->
+    <nav id="rail">
+      <button data-rail="projects" title="Projekte"><span data-icon="folder"></span><span>Projekte</span></button>
+      <div class="rail-sep"></div>
+      <button data-rail="light" title="Licht"><span data-icon="sun"></span><span>Licht</span></button>
+      <button data-rail="moon" title="Mond"><span data-icon="moon"></span><span>Mond</span></button>
+      <button data-rail="night" title="Nacht"><span data-icon="galaxy"></span><span>Nacht</span></button>
+      <button data-rail="plan" title="Planer"><span data-icon="route"></span><span>Planer</span></button>
+      <button data-rail="weather" title="Wetter"><span data-icon="cloud"></span><span>Wetter</span></button>
+      <button data-rail="tides" title="Gezeiten"><span data-icon="wave"></span><span>Gezeiten</span></button>
+      <div class="rail-sep"></div>
+      <button data-rail="ai" title="KI-Assistent"><span data-icon="sparkles"></span><span>KI</span></button>
+      <div class="rail-grow"></div>
+      <button data-rail="settings" title="Einstellungen"><span data-icon="settings"></span><span>Einstell.</span></button>
+    </nav>
 
     <!-- ───────────── Sidebar: Projekte ───────────── -->
     <aside id="sidebar" class="panel"></aside>
@@ -66,6 +86,9 @@
           <button class="chip-btn" id="btn-copy-coords" title="Koordinaten kopieren"><span data-icon="copy"></span></button>
         </div>
       </div>
+
+      <div id="focus-bar" class="glass"></div>
+      <div id="focus-card" class="glass hidden"></div>
 
       <div id="view-map" class="view active">
         <div id="map"></div>
@@ -107,6 +130,16 @@
         <div id="sky-hint" class="glass hint">Ziehen zum Drehen · Scrollen zum Zoomen</div>
       </div>
 
+      <div id="view-stars" class="view">
+        <canvas id="stars-canvas"></canvas>
+      </div>
+
+      <div id="view-ar" class="view">
+        <video id="ar-video" playsinline muted autoplay></video>
+        <canvas id="ar-canvas"></canvas>
+        <div id="ar-ui"></div>
+      </div>
+
       <!-- Zeitleiste -->
       <section id="timebar" class="glass"></section>
     </main>
@@ -120,6 +153,7 @@
         <button data-tab="plan">Planer</button>
         <button data-tab="weather">Wetter</button>
         <button data-tab="tides">Gezeiten</button>
+        <button data-tab="ai" class="ai-chip">KI</button>
       </nav>
       <div class="insp-body">
         <div class="tab-pane active" data-pane="light"></div>
@@ -133,10 +167,11 @@
 
     <!-- Mobile Tabbar -->
     <nav id="mobile-nav">
-      <button data-mt="projects"><span data-icon="folder"></span>Projekte</button>
-      <button data-mt="map" class="active"><span data-icon="map"></span>Karte</button>
-      <button data-mt="info"><span data-icon="sun"></span>Licht</button>
-      <button data-mt="ai"><span data-icon="sparkles"></span>KI</button>
+      <button data-screen="map" class="active"><span data-icon="map"></span><span>Karte</span></button>
+      <button data-screen="stars"><span data-icon="stars"></span><span>Sterne</span></button>
+      <button data-screen="live" class="live-tab"><span data-icon="camera"></span><span>Live</span></button>
+      <button data-screen="projects"><span data-icon="folder"></span><span>Projekte</span></button>
+      <button data-screen="info"><span data-icon="sun"></span><span>Infos</span></button>
     </nav>
   </div>
 

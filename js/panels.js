@@ -29,7 +29,9 @@ export function initPanels() {
   window.addEventListener('lp-tides', () => { if (current === 'tides') render(new Set(['tides'])); });
 }
 export function showTab(tab) {
+  if (tab === 'ai') { window.dispatchEvent(new CustomEvent('lp-open-ai')); return; }
   current = tab;
+  window.dispatchEvent(new CustomEvent('lp-tab', { detail: tab }));
   $$('#insp-tabs button').forEach((b) => b.classList.toggle('active', b.dataset.tab === tab));
   $$('.tab-pane').forEach((p) => p.classList.toggle('active', p.dataset.pane === tab));
   render(new Set(['tab']));

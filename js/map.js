@@ -5,6 +5,7 @@ import { state, setState, onState } from './state.js';
 import { store, prefs } from './store.js';
 import { getDay, sunPos, moonPos, gcPos } from './astro.js';
 import { popupContent, setParkingHandler } from './placeview.js';
+import { layerOn, mwNight, getFocus } from './focus.js';
 import { $, $$, rad, fmtTime, fmtAz, fmtDist, distance, bearing, rafThrottle, esc, icon } from './utils.js';
 
 const L = window.L;
@@ -74,6 +75,7 @@ export function initMap({ onSpotClick, onContext, onSpotDetails }) {
   const redraw = rafThrottle(draw);
   map.on('move zoom resize viewreset zoomanim', redraw);
   new ResizeObserver(() => { map.invalidateSize(); redraw(); }).observe($('#view-map'));
+  window.addEventListener('lp-focus', redraw);
 
   onState((ch) => {
     if (ch.has('lat') || ch.has('lng')) locMarker.setLatLng([state.lat, state.lng]);
@@ -164,7 +166,7 @@ function draw() {
   ctx.clearRect(0, 0, box.width, box.height);
   if (!map) return;
 
-  const L_ = prefs.get('layers');
+  const L_ = { sun: layerOn('sun'), moon: layerOn('moon'), milky: layerOn('milky') };
   const c = map.latLngToContainerPoint([state.lat, state.lng]);
   const R = Math.max(90, Math.min(box.width, box.height) * 0.3);
   const day = getDay(state.lat, state.lng, state.elev, state.tz, state.time);
@@ -243,7 +245,27 @@ function draw() {
   }
   if (L_.milky) {
     const s = sunPos(state.time, obs);
-    drawPath(day.gcPath.filter((p) => true), P, (p) => hexAlpha(COLORS.milky, sunAltAt(day, p.t) < -12 ? 0.9 : 0.25), 2.5, [2, 4]);
+    const focusMw = getFocus() === 'milky';
+    drawPath(day.gcPath.filter((p) => true), P, (p) => hexAlpha(COLORS.milky, sunAltAt(day, p.t) < -12 ? 0.9 : 0.25), focusMw ? 3.5 : 2.5, [2, 4]);
+    if (focusMw) {
+      // Auf-/Untergang des Kerns + beste Zeit hervorheben
+      const pts = day.gcPath;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        if ((a.alt < 0) !== (b.alt < 0)) {
+          const f = a.alt / (a.alt - b.alt), az = a.az + ((((b.az - a.az) + 540) % 360) - 180) * f;
+          const t = new Date(a.t.getTime() + (b.t - a.t) * f), up = b.alt > a.alt;
+          ray(az, hexAlpha(COLORS.milky, 0.85), 2.4, [7, 5]);
+          label(az, `✦${up ? '↑' : '↓'} ${fmtTime(t, state.tz)}`, COLORS.milky, 8);
+        }
+      }
+      const n = mwNight(state.lat, state.lng, state.elev, state.tz, state.time);
+      if (n.best) {
+        ray(n.best.az, COLORS.milky, 3.5, []);
+        const [x, y] = P(n.best.az, n.best.alt); glow(x, y, 9, COLORS.milky);
+        label(n.best.az, `★ beste Zeit ${fmtTime(n.best.t, state.tz)}`, COLORS.milky, 34);
+      }
+    }
     const g = gcPos(state.time, obs);
     if (g.alt > 0) {
       ray(g.az, s.alt < -12 ? COLORS.milky : hexAlpha(COLORS.milky, 0.4), 2.5, [3, 4], true);
@@ -348,7 +370,7 @@ export function drawMoon(ctx, x, y, r, illum, waxing) {
 
 function updateLegend(day) {
   const lg = $('#map-legend');
-  const L_ = prefs.get('layers');
+  const L_ = { sun: layerOn('sun'), moon: layerOn('moon'), milky: layerOn('milky') };
   const s = sunPos(state.time, day.obs), m = moonPos(state.time, day.obs);
   const rows = [];
   if (L_.sun) {

@@ -15,13 +15,14 @@ import { syncStatus, onSync, syncConfig, syncNow } from './sync.js';
 import { HOSTED_URL } from './config.js';
 import { relTime } from './utils.js';
 import { renderPlaceCard } from './placeview.js';
+import { cachedPlaceInfo } from './placeinfo.js';
 import { profiles as aiProfiles } from './ai/provider.js';
 
 let nav = { view: 'home', projectId: null, spotId: null, tab: 'spots', q: '', status: '', tag: '', sort: prefs.get('spotSort') || 'manual' };
 let api;
 
 export function initProjects(a) {
-  api = a; // { selectSpot(id, opts), fitSpots(spots), importSunSurveyor() }
+  api = a; // { selectSpot(id, opts), fitSpots(spots), importFile(), openSettings() }
   store.subscribe((why) => (why === 'sync' ? renderSoon() : render()));
   onSync(updateSyncFoot);
   setInterval(updateSyncFoot, 30000);
@@ -128,9 +129,8 @@ function renderHome() {
       body.appendChild(el(`<div class="welcome card">
         <h3>${icon('bookmark')}Willkommen bei Specula</h3>
         <p>Organisiere deine Foto-Spots in <b>Projekten</b> (z. B. eine Reise). Jeder Spot speichert Ort, Ziel, Notizen und beliebig viele <b>Termine</b> mit Uhrzeit – inklusive Lichtsituation.</p>
-        ${window.__lpHasSSImport ? `<button class="btn primary block" id="sb-import-ss">${icon('download')}31 Orte aus Sun Surveyor übernehmen</button>` : ''}
         ${!syncConfig() && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' ? `<p class="muted small">${icon('phone')} Deine Projekte vom Mac holen: am Mac <b>Einstellungen → iPhone verbinden</b> und den QR-Code mit der Kamera scannen.</p>` : ''}
-        <button class="btn ${window.__lpHasSSImport ? 'ghost' : 'primary'} block" id="sb-new2">${icon('plus')}Leeres Projekt anlegen</button>
+        <button class="btn primary block" id="sb-new2">${icon('plus')}Neues Projekt anlegen</button>
       </div>`));
     }
     if (upcoming.length) {
@@ -169,15 +169,14 @@ function renderHome() {
   qi.addEventListener('input', debounce(() => { nav.q = qi.value; render(); setTimeout(() => { const n = $('#sb-q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); }, 200));
   node.querySelector('#sb-new').onclick = () => editProject();
   node.querySelector('#sb-new2')?.addEventListener('click', () => editProject());
-  node.querySelector('#sb-import-ss')?.addEventListener('click', () => api.importSunSurveyor());
   node.querySelector('#sb-more').onclick = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
     menu(r.left, r.bottom + 6, [
       { label: 'Backup exportieren (JSON)', icon: 'download', onClick: () => download(`Specula-Backup-${new Date().toISOString().slice(0, 10)}.json`, store.exportJSON()) },
       { label: 'Alle Spots als KML (Google Earth)', icon: 'download', onClick: () => download('Specula.kml', toKML('Specula', store.spots), 'application/vnd.google-earth.kml+xml') },
       '-',
+      { label: 'Aus Google Maps importieren …', icon: 'map', onClick: () => api.importGoogle?.() },
       { label: 'Importieren (JSON / KML) …', icon: 'upload', onClick: () => api.importFile() },
-      window.__lpHasSSImport ? { label: 'Orte aus Sun Surveyor übernehmen', icon: 'download', onClick: () => api.importSunSurveyor() } : null,
       '-',
       { label: 'Synchronisierung …', icon: 'sync', onClick: () => api.openSettings('sync') },
       { label: 'Einstellungen …', icon: 'settings', onClick: () => api.openSettings() },
@@ -186,12 +185,15 @@ function renderHome() {
   return node;
 }
 
+const thumbOf = (s) => cachedPlaceInfo(s.lat, s.lng)?.photos?.[0]?.thumb || null;
 function projectCard(p) {
   const spots = store.spotsOf(p.id);
+  const cover = [...spots].sort((a, b) => (b.rating || 0) - (a.rating || 0)).map(thumbOf).find(Boolean);
   const shoots = spots.reduce((n, s) => n + (s.shoots?.length || 0), 0);
   const done = spots.filter((s) => s.status === 'erledigt').length;
   const range = p.dateFrom ? `${fmtDateShort(new Date(p.dateFrom + 'T12:00'), deviceTz)}${p.dateTo ? ' – ' + fmtDateShort(new Date(p.dateTo + 'T12:00'), deviceTz) : ''}` : '';
   const n = el(`<button class="project-card" style="--c:${p.color}">
+    ${cover ? `<div class="pc-cover" style="background-image:url('${cover}')"></div>` : ''}
     <div class="pc-top"><span class="pc-dot"></span><b>${esc(p.name)}</b></div>
     ${range ? `<div class="pc-date">${icon('calendar')}${range}</div>` : ''}
     <div class="pc-meta"><span>${spots.length} Spots</span>${shoots ? `<span>${shoots} Termine</span>` : ''}${done ? `<span>${done} ✓</span>` : ''}</div>
@@ -205,7 +207,9 @@ function spotItem(s, showProject = false) {
   const p = store.project(s.projectId);
   const ns = nextShoot(s);
   const dist = distance(state.lat, state.lng, s.lat, s.lng);
+  const th = thumbOf(s);
   const n = el(`<button class="spot-item" data-spot="${s.id}" style="--c:${p?.color || '#c8d6e5'}">
+    ${th ? `<span class="si-thumb" style="background-image:url('${th}')"></span>` : ''}
     <span class="si-status" style="background:${STATUS[s.status]?.color}" title="${STATUS[s.status]?.label}"></span>
     <div class="si-main">
       <div class="si-name">${esc(s.name)}${s.rating ? `<span class="stars">${'★'.repeat(s.rating)}</span>` : ''}</div>
@@ -364,6 +368,7 @@ function renderSpot() {
     <div class="sb-head">
       <button class="icon-btn sm" id="sp-back" title="Zurück">${icon('back')}</button>
       <div class="sb-crumb" style="--c:${p?.color || '#c8d6e5'}"><span class="pc-dot"></span>${esc(p?.name || 'Ohne Projekt')}</div>
+      <button class="icon-btn sm" id="sp-onmap" title="Auf Karte zeigen">${icon('map')}</button>
       <button class="icon-btn sm" id="sp-menu">${icon('more')}</button>
     </div>
     <div class="sb-body">
@@ -465,6 +470,7 @@ function renderSpot() {
   tagIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } });
   tagIn.addEventListener('change', () => { if (TAG_SUGGESTIONS.includes(tagIn.value) || store.allTags().includes(tagIn.value)) addTag(); });
 
+  node.querySelector('#sp-onmap').onclick = () => api.showOnMap?.(s.id);
   node.querySelector('#sp-back').onclick = () => (s.projectId ? openProject(s.projectId) : goHome());
   node.querySelector('#sp-setpos').onclick = () => { store.updateSpot(s.id, { lat: state.lat, lng: state.lng, elevation: state.elev, tz: state.tz }); toast('Position aktualisiert'); };
   node.querySelector('#sp-settarget').onclick = () => {

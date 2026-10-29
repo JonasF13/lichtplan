@@ -4,6 +4,7 @@
 import { state, setState, onState } from './state.js';
 import { prefs, store } from './store.js';
 import { syncConfig, syncNow, syncStatus } from './sync.js';
+import { layerOn } from './focus.js';
 import { getDay, sunPos, moonPos, gcPos, observer } from './astro.js';
 import { $, $$, rad, deg, icon, fmtTime, fmtAz, fmtDeg, fmtDist, distance, bearing, rafThrottle, phaseOf, compass, esc } from './utils.js';
 import { COLORS, drawMoon, hexAlpha, roundRect } from './map.js';
@@ -36,6 +37,7 @@ export function initStreetView({ openSettings, toast }) {
   $('#sv-use-pos').onclick = () => { if (panoPos) setState({ lat: panoPos.lat, lng: panoPos.lng, placeName: '', activeSpotId: null }); };
   $('#sv-calib').onclick = () => calibDialog(redraw);
   window.__lpSvRedraw = redraw;
+  window.addEventListener('lp-focus', redraw);
   // Key kommt nachträglich an (Synchronisierung / anderes Fenster) → Street View starten
   store.subscribe((why) => {
     if ((why === 'sync' || why === 'settings') && active && !pano && prefs.get('gmapsKey')) activateStreetView();
@@ -278,7 +280,7 @@ function draw() {
   ctx.clearRect(0, 0, box.width, box.height);
   if (!active || !pano || !panoPos) return;
   const cam = camera(box.width, box.height);
-  const L_ = prefs.get('svLayers');
+  const L_ = { sun: layerOn('sun', 'svLayers'), moon: layerOn('moon', 'svLayers'), milky: layerOn('milky', 'svLayers'), grid: layerOn('grid', 'svLayers') };
   const lat = panoPos.lat, lng = panoPos.lng;
   const day = getDay(lat, lng, state.elev, state.tz, state.time);
   const obs = day.obs;

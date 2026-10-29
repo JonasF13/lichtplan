@@ -5,6 +5,7 @@ import { state, onState, setState } from './state.js';
 import { getDay, sunPos, moonPos, gcPos } from './astro.js';
 import { $, fmtTime, fmtDeg, fmtAz, rafThrottle, bearing, phaseOf, PHASES, wrap360, wrap180 } from './utils.js';
 import { COLORS, drawMoon, hexAlpha, roundRect } from './map.js';
+import { getFocus } from './focus.js';
 
 let cv, ctx, active = false;
 let center = 180, span = 360; // Azimut-Mitte, sichtbarer Bereich in Grad
@@ -34,6 +35,7 @@ export function initSky() {
     if (best) setState({ time: best.t });
   });
   window.__lpSkyRedraw = redraw;
+  window.addEventListener('lp-focus', () => active && redraw());
 }
 export function activateSky() {
   active = true;
@@ -110,21 +112,21 @@ function draw() {
     ctx.restore();
   };
 
-  path(day.gcPath, (p) => { const i = Math.round((p.t - day.start) / 600000); const sa = day.sunPath[Math.min(i, day.sunPath.length - 1)].alt; return hexAlpha(COLORS.milky, sa < -12 ? 0.9 : 0.25); }, 3, [2, 5]);
-  path(day.moonPath, () => 'rgba(200,225,255,.85)', 2, [6, 5]);
-  hours(day.moonPath, 'rgba(200,225,255,.9)');
-  path(day.sunPath, (p) => (p.alt < -6 ? 'rgba(255,224,102,.25)' : p.alt < -4 ? COLORS.blue : p.alt < 6 ? COLORS.golden : COLORS.sun), 3.5);
-  hours(day.sunPath, COLORS.sun);
+  const F = getFocus(), on = (k) => F === 'all' || F === k;
+  if (on('milky')) path(day.gcPath, (p) => { const i = Math.round((p.t - day.start) / 600000); const sa = day.sunPath[Math.min(i, day.sunPath.length - 1)].alt; return hexAlpha(COLORS.milky, sa < -12 ? 0.9 : 0.25); }, F === 'milky' ? 4 : 3, [2, 5]);
+  if (F === 'milky') hours(day.gcPath, COLORS.milky);
+  if (on('moon')) { path(day.moonPath, () => 'rgba(200,225,255,.85)', F === 'moon' ? 3 : 2, [6, 5]); hours(day.moonPath, 'rgba(200,225,255,.9)'); }
+  if (on('sun')) { path(day.sunPath, (p) => (p.alt < -6 ? 'rgba(255,224,102,.25)' : p.alt < -4 ? COLORS.blue : p.alt < 6 ? COLORS.golden : COLORS.sun), 3.5); hours(day.sunPath, COLORS.sun); }
 
   const g = gcPos(state.time, obs), m = moonPos(state.time, obs);
-  if (g.alt > ALT_MIN) { dot(X(g.az), Y(g.alt), 6, COLORS.milky); pill('Milchstraße', X(g.az), Y(g.alt) - 18, COLORS.milky); }
-  if (m.alt > ALT_MIN) { drawMoon(ctx, X(m.az), Y(m.alt), 10, m.illum, m.waxing); pill(`Mond ${Math.round(m.illum * 100)} %`, X(m.az), Y(m.alt) + 22, COLORS.moon); }
-  if (s.alt > ALT_MIN) { dot(X(s.az), Y(s.alt), 11, s.alt < 6 ? COLORS.golden : COLORS.sun); pill(`Sonne ${fmtDeg(s.alt, 1)} · ${fmtAz(s.az)}`, X(s.az), Y(s.alt) - 24, COLORS.sun); }
+  if (on('milky') && g.alt > ALT_MIN) { dot(X(g.az), Y(g.alt), 6, COLORS.milky); pill('Milchstraße', X(g.az), Y(g.alt) - 18, COLORS.milky); }
+  if (on('moon') && m.alt > ALT_MIN) { drawMoon(ctx, X(m.az), Y(m.alt), 10, m.illum, m.waxing); pill(`Mond ${Math.round(m.illum * 100)} %`, X(m.az), Y(m.alt) + 22, COLORS.moon); }
+  if (on('sun') && s.alt > ALT_MIN) { dot(X(s.az), Y(s.alt), 11, s.alt < 6 ? COLORS.golden : COLORS.sun); pill(`Sonne ${fmtDeg(s.alt, 1)} · ${fmtAz(s.az)}`, X(s.az), Y(s.alt) - 24, COLORS.sun); }
 
   ctx.restore();
-  [[day.sun.riseAz, `↑ ${fmtTime(day.sun.rise, state.tz)}`, COLORS.sunrise], [day.sun.setAz, `↓ ${fmtTime(day.sun.set, state.tz)}`, COLORS.sunset],
-   [day.moon.riseAz, `☾↑ ${fmtTime(day.moon.rise, state.tz)}`, COLORS.moonrise], [day.moon.setAz, `☾↓ ${fmtTime(day.moon.set, state.tz)}`, COLORS.moonset]]
-    .forEach(([az, t, c], i) => { if (az == null) return; const x = X(az); ctx.fillStyle = c; ctx.fillRect(x - 1, Y(0) - 10, 2, 20); pill(t, x, Y(0) + (i < 2 ? 60 : 82), c); });
+  [[day.sun.riseAz, `↑ ${fmtTime(day.sun.rise, state.tz)}`, COLORS.sunrise, 'sun'], [day.sun.setAz, `↓ ${fmtTime(day.sun.set, state.tz)}`, COLORS.sunset, 'sun'],
+   [day.moon.riseAz, `☾↑ ${fmtTime(day.moon.rise, state.tz)}`, COLORS.moonrise, 'moon'], [day.moon.setAz, `☾↓ ${fmtTime(day.moon.set, state.tz)}`, COLORS.moonset, 'moon']]
+    .forEach(([az, t, c, k], i) => { if (az == null || !on(k)) return; const x = X(az); ctx.fillStyle = c; ctx.fillRect(x - 1, Y(0) - 10, 2, 20); pill(t, x, Y(0) + (i < 2 ? 60 : 82), c); });
 
   function dot(x, y, r, c) {
     const gr = ctx.createRadialGradient(x, y, 0, x, y, r * 2.8);

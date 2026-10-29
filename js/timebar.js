@@ -4,6 +4,7 @@
 import { state, setState, onState } from './state.js';
 import { getDay, sunPos, yearOverview } from './astro.js';
 import { cachedTideModel, tideHeight } from './tides.js';
+import { getFocus, mwNight } from './focus.js';
 import {
   $, icon, zonedParts, zonedToUtc, startOfLocalDay, addLocalDays, fmtTime, fmtDateLong,
   minutesOfDay, phaseOf, PHASES, rafThrottle, tzOffsetMin, fmtDateShort,
@@ -31,6 +32,7 @@ export function initTimebar(opts) {
       <div class="tb-actions">
         <div class="chips" id="tb-jumps"></div>
         <button class="btn sm ghost" id="tb-now">${icon('now')}Jetzt</button>
+        <button class="icon-btn sm" id="tb-expand" title="Mehr anzeigen">${icon('chevron')}</button>
         <button class="btn sm" id="tb-add-shoot" title="Aktuelle Zeit als Termin zum aktiven Spot hinzufügen">${icon('clock')}Zeit merken</button>
       </div>
     </div>
@@ -75,8 +77,10 @@ export function initTimebar(opts) {
   });
   $('.tb-date-btn').addEventListener('click', (e) => { try { di.showPicker(); e.preventDefault(); } catch {} });
 
-  new ResizeObserver(() => { lastDayKey = lastYearKey = ''; render(); }).observe(tb);
+  new ResizeObserver(() => { lastDayKey = lastYearKey = ''; render(); document.documentElement.style.setProperty('--tb-h', tb.offsetHeight + 'px'); }).observe(tb);
   window.addEventListener('lp-tides', () => { lastDayKey = ''; render(); });
+  window.addEventListener('lp-focus', () => { lastDayKey = ''; render(); });
+  $('#tb-expand')?.addEventListener('click', () => { tb.classList.toggle('expanded'); lastDayKey = lastYearKey = ''; setTimeout(render, 30); });
   onState((ch) => { if (ch.has('time') || ch.has('lat') || ch.has('lng') || ch.has('tz') || ch.has('elev') || ch.has('activeSpotId')) render(); });
   render();
 }
@@ -155,6 +159,19 @@ function drawDay(day) {
     const x1 = ((p.t - day.start) / 60000 / dayMin) * w, x2 = ((day.moonPath[i + 1].t - day.start) / 60000 / dayMin) * w;
     ctx.fillRect(x1, h - 3, x2 - x1 + 0.5, 3);
   });
+  // Fokus: Sichtbarkeitsfenster hervorheben
+  const F = getFocus();
+  const X = (t) => ((t - day.start) / 60000 / dayMin) * w;
+  if (F === 'milky') {
+    const n = mwNight(state.lat, state.lng, state.elev, state.tz, state.time);
+    const band = (a, b) => { if (!a || !b) return; const x1 = Math.max(0, X(a)), x2 = Math.min(w, X(b)); if (x2 > x1) { ctx.fillStyle = 'rgba(199,146,234,.55)'; ctx.fillRect(x1, h - 7, x2 - x1, 7); } };
+    band(n.visStart, n.visEnd);
+    if (n.best) { ctx.fillStyle = '#e6c8ff'; ctx.beginPath(); ctx.arc(X(n.best.t), h - 3.5, 3.5, 0, 7); ctx.fill(); }
+  }
+  if (F === 'moon') {
+    ctx.fillStyle = 'rgba(200,220,255,.9)';
+    day.moonPath.forEach((p, i) => { if (p.alt <= 0 || i === n - 1) return; ctx.fillRect(X(p.t), h - 7, X(day.moonPath[i + 1].t) - X(p.t) + 0.5, 7); });
+  }
   // Gezeiten (falls am Meer): türkise Linie
   const tm = cachedTideModel(state.lat, state.lng);
   if (tm && !tm.inland) {

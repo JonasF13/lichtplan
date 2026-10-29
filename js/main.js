@@ -13,6 +13,9 @@ import { initAI, toggleAI, openAI, closeAI, openAISettings, isOpen as aiOpen } f
 import { initSync, syncNow, syncConfig, setSyncConfig, syncStatus, onSync, testSync, setupLink, readSetupLink } from './sync.js';
 import { HOSTED_URL } from './config.js';
 import { getTideModel } from './tides.js';
+import { initLayout, go, noteView, noteTab, layout, setScreen } from './layout.js';
+import { initFocus } from './focus.js';
+import { initAR, activateAR, deactivateAR, arSupported } from './ar.js';
 import { searchPlaces, reverseName, forecast, elevations } from './services.js';
 import { modal, toast, menu, confirmDialog } from './ui.js';
 import { $, $$, hydrateIcons, icon, esc, parseCoords, debounce, fmtCoord, pickFile, distance, deviceTz, relTime } from './utils.js';
@@ -22,12 +25,12 @@ hydrateIcons();
 // ── Module starten ──────────────────────────────────────────
 initMap({
   onSpotClick: (id) => { selectSpot(id, { keepView: true }); openSpot(id); },
-  onSpotDetails: (id) => { openSpot(id); if (innerWidth < 900) setMobileTab('projects'); },
+  onSpotDetails: (id) => { openSpot(id); go('projects'); },
   onContext: contextMenu,
 });
 initTimebar({ onAddShoot: addShootToActive });
 initPanels();
-initProjects({ selectSpot, fitSpots, importSunSurveyor, importFile, openSettings });
+initProjects({ selectSpot, fitSpots, importFile, openSettings, importGoogle, showOnMap: (id) => { selectSpot(id); go('map'); if (state.view !== 'map') setView('map'); } });
 initStreetView({ openSettings, toast });
 initSky();
 initAI({ selectSpot, openSpot, flyTo, setView });
@@ -48,7 +51,7 @@ function selectSpot(id, opts = {}) {
     ...(time ? { time } : {}),
   });
   if (state.view === 'map' && !opts.keepView) flyTo(s.lat, s.lng);
-  if (innerWidth < 900 && document.body.dataset.mobileTab === 'projects') setMobileTab('map');
+  if (layout() === 'phone' && document.body.dataset.screen === 'projects' && opts.time) setScreen('map');
 }
 
 function addShootToActive() {
@@ -134,14 +137,14 @@ $('#btn-locate').onclick = () => {
     () => toast('Standort konnte nicht bestimmt werden', 'warn'), { enableHighAccuracy: true, timeout: 10000 });
 };
 $('#btn-save-spot').onclick = () => openSaveDialog();
-$('#btn-ai').onclick = () => (innerWidth < 900 ? setMobileTab(aiOpen() ? 'map' : 'ai') : toggleAI());
+$('#btn-ai').onclick = () => (layout() === 'desktop' ? toggleAI() : aiOpen() ? (closeAI(), layout() === 'phone' && setScreen('map')) : go('ai'));
 $('#btn-settings').onclick = () => openSettings();
 $('#btn-target-mode').onclick = () => {
   if (state.target && !state.targetMode) {
     menu($('#btn-target-mode').getBoundingClientRect().left, $('#btn-target-mode').getBoundingClientRect().bottom + 6, [
       { label: 'Neues Ziel setzen', icon: 'target', onClick: () => setState({ targetMode: true }) },
       { label: 'Ziel entfernen', icon: 'close', onClick: () => setState({ target: null }) },
-      { label: 'Planer öffnen', icon: 'route', onClick: () => { showTab('plan'); setMobileTab('info'); } },
+      { label: 'Planer öffnen', icon: 'route', onClick: () => go('info', 'plan') },
     ]);
   } else setState({ targetMode: !state.targetMode });
   if (state.targetMode) { toast('Klicke auf die Karte, um das Ziel zu setzen'); if (state.view !== 'map') setView('map'); }
@@ -150,14 +153,40 @@ $('#btn-copy-coords').onclick = () => { navigator.clipboard?.writeText(fmtCoord(
 
 // ── Ansichten ───────────────────────────────────────────────
 function setView(v) {
+  if (v === 'ar' && !arSupported() && layout() === 'desktop') { toast('Die Live-Ansicht gibt es am iPhone und iPad'); return; }
   setState({ view: v });
   $$('#view-switch button').forEach((b) => b.classList.toggle('active', b.dataset.view === v));
   $$('#stage .view').forEach((n) => n.classList.toggle('active', n.id === `view-${v}`));
   document.body.dataset.view = v;
   v === 'sv' ? activateStreetView() : deactivateStreetView();
   v === 'sky' ? activateSky() : deactivateSky();
+  v === 'stars' ? activateStars() : deactivateStars();
+  v === 'ar' ? activateAR() : deactivateAR();
   if (v === 'map') setTimeout(() => getMap().invalidateSize(), 50);
+  noteView(v);
 }
+// ── Sternkarte (js/starsky.js) ──────────────────────────────
+let starView = null;
+async function activateStars() {
+  try {
+    const m = await import('./starsky.js');
+    if (!starView) {
+      starView = m.initStarView({
+        canvas: $('#stars-canvas'),
+        getTime: () => state.time,
+        getLocation: () => ({ lat: state.lat, lng: state.lng, elev: state.elev, tz: state.tz }),
+        setTime: (d) => setState({ time: d }),
+      });
+    }
+    if (state.view === 'stars') starView.activate();
+  } catch (e) {
+    console.warn(e);
+    const v = $('#view-stars');
+    if (!v.querySelector('.ar-card')) v.insertAdjacentHTML('beforeend', `<div class="ar-card glass"><div class="empty-icon">${icon('stars')}</div><h2>Sternkarte</h2><p>Die Sternkarte mit Sternbildern, Planeten und Milchstraße kommt mit dem nächsten Update.</p></div>`);
+  }
+}
+function deactivateStars() { starView?.deactivate?.(); }
+onState((ch) => { if (state.view === 'stars' && (ch.has('time') || ch.has('lat') || ch.has('lng'))) starView?.redraw?.(); });
 $$('#view-switch button').forEach((b) => b.onclick = () => setView(b.dataset.view));
 
 // ── Kontextmenü (Rechtsklick auf Karte) ─────────────────────
@@ -187,25 +216,25 @@ document.addEventListener('keydown', (e) => {
   else if (k === '1') setView('map');
   else if (k === '2') setView('sv');
   else if (k === '3') setView('sky');
+  else if (k === '4') setView('stars');
   else if (k === '/' || (k === 'f' && (e.metaKey || e.ctrlKey))) { e.preventDefault(); searchInput.focus(); searchInput.select(); }
   else if (k === 'Escape') setState({ targetMode: false });
-  else if (k === 'k' || k === 'K') { if (innerWidth < 900) setMobileTab(aiOpen() ? 'map' : 'ai'); else toggleAI(); }
+  else if (k === 'k' || k === 'K') { if (layout() === 'desktop') toggleAI(); else go('ai'); }
   else if (k === '?') showShortcuts();
 });
 function showShortcuts() {
   modal({ title: 'Tastenkürzel', body: `<div class="kvs shortcuts">
-    ${[['← / →', '10 Minuten (⇧ 1 Stunde, ⌥ 1 Minute)'], ['↑ / ↓', '1 Tag (⇧ 1 Woche)'], ['N', 'Jetzt'], ['S', 'Spot speichern'], ['T', 'Ziel setzen'], ['1 / 2 / 3', 'Karte / Street View / Himmel'], ['/', 'Suche'], ['K', 'KI-Assistent'], ['Rechtsklick', 'Menü auf der Karte']]
+    ${[['← / →', '10 Minuten (⇧ 1 Stunde, ⌥ 1 Minute)'], ['↑ / ↓', '1 Tag (⇧ 1 Woche)'], ['N', 'Jetzt'], ['S', 'Spot speichern'], ['T', 'Ziel setzen'], ['1 / 2 / 3 / 4', 'Karte / Street View / Himmel / Sterne'], ['/', 'Suche'], ['K', 'KI-Assistent'], ['Rechtsklick', 'Menü auf der Karte']]
       .map(([a, b]) => `<div class="kv"><span><kbd>${a}</kbd></span><b>${b}</b></div>`).join('')}</div>` });
 }
 
-// ── Mobile ──────────────────────────────────────────────────
-function setMobileTab(t) {
-  document.body.dataset.mobileTab = t === 'ai' ? 'info' : t;
-  if (t === 'ai') openAI(); else if (t === 'info') closeAI();
-  $$('#mobile-nav button').forEach((b) => b.classList.toggle('active', b.dataset.mt === t));
-  if (t === 'map') setTimeout(() => getMap().invalidateSize(), 50);
-}
-$$('#mobile-nav button').forEach((b) => b.onclick = () => setMobileTab(b.dataset.mt));
+// ── Layout (Handy / Tablet & Duo / Desktop), Fokus, Live-Kamera ──
+initLayout({ setView, showTab, openAI, closeAI, aiOpen, openSettings, invalidateMap: () => getMap().invalidateSize() });
+initFocus({ showTab, goInfo: () => go('info') });
+initAR();
+window.addEventListener('lp-open-ai', () => go('ai'));
+window.addEventListener('lp-tab', (e) => noteTab(e.detail));
+document.body.classList.toggle('no-ar', !arSupported());
 
 // ── Einstellungen ───────────────────────────────────────────
 function openSettings(focus) {
@@ -273,7 +302,6 @@ function openSettings(focus) {
           <div class="btn-row wrap">
             <button class="btn sm" id="set-export">${icon('download')}Backup exportieren</button>
             <button class="btn sm" id="set-import">${icon('upload')}Importieren (JSON/KML)</button>
-            ${window.__lpHasSSImport ? `<button class="btn sm" id="set-ss">${icon('download')}Sun-Surveyor-Orte übernehmen</button>` : ''}
             <button class="btn sm danger ghost" id="set-clear">${icon('trash')}Alles löschen</button>
           </div>
         </section>
@@ -329,7 +357,6 @@ function openSettings(focus) {
         if (r.ok) prefs.set('gmapsKey', k);
       };
       n.querySelector('#set-ai').onclick = () => openAISettings();
-      n.querySelector('#set-ss')?.addEventListener('click', importSunSurveyor);
       n.querySelector('#set-clear').onclick = async () => { if (await confirmDialog('Alle Daten löschen?', syncConfig() ? 'Alle Projekte, Spots und Termine werden gelöscht – <b>auch auf deinen anderen synchronisierten Geräten</b>. (Ältere Stände bleiben im GitHub-Versionsverlauf erhalten.)' : 'Alle Projekte, Spots und Termine werden aus diesem Browser entfernt. Exportiere vorher ein Backup!')) { store.clearAll(); toast('Alle Daten gelöscht'); } };
       if (focus === 'gmaps') n.querySelector('#set-gmaps details').open = true;
       if (focus === 'sync') setTimeout(() => n.querySelector('#set-sync')?.scrollIntoView({ block: 'start' }), 50);
@@ -408,15 +435,11 @@ function handleSetupLink() {
 }
 
 // ── Import ──────────────────────────────────────────────────
-async function importSunSurveyor() {
+async function importGoogle() {
   try {
-    const r = await fetch('data/sunsurveyor-import.json');
-    const data = await r.json();
-    const res = store.importJSON(data, 'merge');
-    if (!res.spots) return toast('Sun-Surveyor-Orte sind bereits importiert');
-    toast(`${res.spots} Spots in ${res.projects} Projekten übernommen`);
-    fitSpots(store.spots);
-  } catch (e) { toast('Import fehlgeschlagen: ' + e.message, 'warn'); }
+    const m = await import('./importers/googlemaps.js');
+    m.openGoogleMapsImport({ onDone: (r) => { if (r?.projects?.length) openProject(r.projects[0].id || r.projects[0]); if (store.spots.length) fitSpots(store.spots); } });
+  } catch (e) { console.warn(e); toast('Der Google-Maps-Import kommt mit dem nächsten Update'); }
 }
 async function importFile() {
   const f = await pickFile('.json,.kml,application/json,application/vnd.google-earth.kml+xml');
@@ -442,12 +465,6 @@ setView('map');
 handleSetupLink();
 applyLocalSetup();
 window.addEventListener('hashchange', handleSetupLink);
-// Sun-Surveyor-Import nur anbieten, wenn die Datei vorhanden ist (nicht in der Online-Version)
-if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) {
-  fetch('data/sunsurveyor-import.json', { method: 'HEAD', cache: 'no-store' })
-    .then((r) => { window.__lpHasSSImport = r.ok; }).catch(() => { window.__lpHasSSImport = false; })
-    .finally(() => refreshSidebar());
-}
 if (!prefs.get('firstRunDone')) {
   prefs.set('firstRunDone', true);
   setTimeout(() => toast('Tipp: Klicke auf die Karte, um den Standort zu setzen · <kbd>?</kbd> zeigt Tastenkürzel'), 1200);
