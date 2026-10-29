@@ -1,0 +1,51 @@
+Himmelsdaten für Specula (data/sky/*.json)
+================================================
+
+Erzeugt mit scripts/build-sky-data.mjs aus den Daten von d3-celestial:
+https://github.com/ofrohn/d3-celestial
+
+Copyright (c) 2015, Olaf Frohn
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software without
+   specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Quellen der Kataloge (laut d3-celestial, data/readme):
+- Sterne (stars.json, aus stars.6.json): XHIP – An Extended Hipparcos Compilation,
+  Anderson E., Francis C. (2012), VizieR V/137D. Grenzgröße 6 mag, J2000, Farbindex B–V.
+- Sternnamen & Bezeichnungen (starnames.json): HD-DM-GC-HR-HIP-Bayer-Flamsteed
+  Cross Index (Kostjuk 2002, VizieR IV/27A); FK5-SAO-HD-Common Name Cross Index
+  (Smith 1996, VizieR IV/22); General Catalogue of Variable Stars (Samus et al.,
+  VizieR B/gcvs); Übersetzungen aus den Stellarium-Skycultures-Daten.
+  Deutsche Schreibweisen in Specula ergänzt (z. B. Wega, Atair, Kapella, Kastor).
+- Sternbildlinien (constlines.json) und Namenspositionen (constnames.json):
+  IAU-Sternbildseite, Linien/Namenspositionen bearbeitet von Olaf Frohn;
+  deutsche Namen nach Wikipedia, in Specula vereinheitlicht.
+- Milchstraße (milkyway.json): Milky Way Outline Catalog, Jose R. Vieira
+  (skymap.com), 5 Helligkeitsstufen (mw.json); in Specula als weiche
+  Gauß-Punkte neu abgetastet.
+
+Planeten, Sonne und Mond berechnet Specula zur Laufzeit mit astronomy-engine
+(MIT, Don Cross).

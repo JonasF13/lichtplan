@@ -1,0 +1,98 @@
+/* ─────────────────────────────────────────────────────────────
+   Sterne – Planetarium (js/starsky.js)
+   Erzeugte Elemente (im Elternelement des Canvas):
+     canvas.stv-canvas · div.stv-ui > .stv-card, .stv-bar (.stv-tg, .stv-play), .stv-loading
+   Anpassbar: --stv-bottom (Abstand der Leiste unten, z. B. über der Zeitleiste)
+   ───────────────────────────────────────────────────────────── */
+.stv-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; background: #03050c; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.stv-canvas.grabbing { cursor: grabbing; }
+
+.stv-ui {
+  --stv-glass: var(--glass, rgba(16, 21, 33, 0.72));
+  --stv-line: var(--line, rgba(255, 255, 255, 0.08));
+  --stv-text: var(--text, #e8ecf4);
+  --stv-text2: var(--text2, #a3adc2);
+  --stv-text3: var(--text3, #6f7a91);
+  --stv-accent: var(--accent, #ff9f43);
+  --stv-violet: #c792ea;
+  position: absolute; inset: 0; z-index: 5; pointer-events: none; container-type: size;
+  font: 13px/1.4 -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
+  color: var(--stv-text); -webkit-font-smoothing: antialiased;
+}
+.stv-ui > * { pointer-events: auto; }
+:where(.stv-ui button) { font: inherit; color: inherit; background: none; border: 0; margin: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.stv-ui .ic { width: 18px; height: 18px; flex: none; display: block; }
+.stv-glass, .stv-bar, .stv-card, .stv-loading {
+  background: var(--stv-glass);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
+  border: 1px solid var(--stv-line); border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Steuerleiste ───────────────────────────────────────── */
+.stv-bar {
+  position: absolute; left: 50%; bottom: calc(var(--stv-bottom, 16px) + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 5px;
+  border-radius: 15px; max-width: calc(100% - 20px);
+}
+.stv-group { display: flex; gap: 2px; }
+.stv-tg {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  min-width: 66px; height: 46px; padding: 0 8px; border-radius: 10px;
+  color: var(--stv-text2); font-size: 10.5px; font-weight: 600; letter-spacing: 0.01em; white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.stv-tg:hover { background: rgba(255, 255, 255, 0.07); color: var(--stv-text); }
+.stv-tg.on { color: var(--stv-accent); background: rgba(255, 159, 67, 0.14); }
+.stv-tg[data-layer="milkyway"].on { color: var(--stv-violet); background: rgba(199, 146, 234, 0.16); }
+.stv-tg:focus-visible, .stv-play:focus-visible, .stv-card-x:focus-visible { outline: 2px solid rgba(255, 159, 67, 0.7); outline-offset: 1px; }
+
+.stv-play {
+  position: relative; overflow: hidden; display: inline-flex; align-items: center; gap: 10px;
+  height: 46px; padding: 0 14px 0 9px; border-radius: 11px;
+  background: linear-gradient(135deg, rgba(199, 146, 234, 0.22), rgba(255, 159, 67, 0.16));
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09); color: #fff; text-align: left;
+  transition: filter 0.15s;
+}
+.stv-play:hover { filter: brightness(1.12); }
+.stv-play-ic { width: 30px; height: 30px; border-radius: 50%; flex: none; display: grid; place-items: center; background: var(--stv-accent); color: #1b0f08; box-shadow: 0 3px 12px rgba(255, 159, 67, 0.35); transition: background 0.2s, box-shadow 0.2s; }
+.stv-play-ic .ic { width: 13px; height: 13px; }
+.stv-play.playing .stv-play-ic { background: var(--stv-violet); box-shadow: 0 3px 14px rgba(199, 146, 234, 0.45); }
+.stv-play-txt { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.stv-play-txt b { font-size: 12.5px; font-weight: 700; letter-spacing: -0.005em; }
+.stv-play-txt small { font-size: 10.5px; color: var(--stv-text2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stv-play-prog { position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, var(--stv-violet), var(--stv-accent)); transform: scaleX(0); transform-origin: left center; }
+
+/* ── Infokarte ──────────────────────────────────────────── */
+.stv-card { position: absolute; left: 0; top: 0; width: 252px; padding: 12px 14px 11px; will-change: transform; animation: stv-in 0.16s ease-out; }
+.stv-card[hidden] { display: none; }
+.stv-card { transition: opacity 0.2s ease; }
+.stv-card.stv-away { opacity: 0; pointer-events: none; }
+@keyframes stv-in { from { opacity: 0; } to { opacity: 1; } }
+.stv-card-x { position: absolute; top: 7px; right: 7px; width: 24px; height: 24px; border-radius: 7px; color: var(--stv-text3); font-size: 18px; line-height: 22px; text-align: center; }
+.stv-card-x:hover { background: rgba(255, 255, 255, 0.08); color: var(--stv-text); }
+.stv-card-kicker { display: flex; align-items: center; gap: 7px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--stv-text3); padding-right: 24px; }
+.stv-card-kicker i { width: 7px; height: 7px; border-radius: 50%; flex: none; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06); }
+.stv-card-title { margin-top: 5px; font-size: 17px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.25; padding-right: 18px; }
+.stv-card-sub { margin-top: 1px; font-size: 12px; color: var(--stv-text2); }
+.stv-card-rows { display: grid; gap: 4px; margin-top: 9px; padding-top: 9px; border-top: 1px solid var(--stv-line); }
+.stv-card-rows div { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; font-size: 12px; }
+.stv-card-rows span { color: var(--stv-text2); white-space: nowrap; }
+.stv-card-rows b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+
+.stv-loading { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); padding: 9px 14px; font-size: 12px; color: var(--stv-text2); }
+
+/* ── Schmale Ansicht (Telefon) ──────────────────────────── */
+@container (max-width: 640px) {
+  .stv-tg { min-width: 40px; width: 40px; height: 40px; padding: 0; }
+  .stv-tg span { display: none; }
+  .stv-play { height: 40px; padding: 0 11px 0 6px; gap: 8px; }
+  .stv-play-ic { width: 28px; height: 28px; }
+  .stv-bar { gap: 4px; padding: 4px; border-radius: 13px; }
+  .stv-card { width: 232px; }
+}
+@container (max-width: 370px) {
+  .stv-tg { min-width: 34px; width: 34px; }
+  .stv-play-txt small { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .stv-card { animation: none; } }

@@ -11,6 +11,7 @@ import { initStreetView, activateStreetView, deactivateStreetView, resetGoogle, 
 import { initSky, activateSky, deactivateSky } from './sky.js';
 import { initAI, toggleAI, openAI, closeAI, openAISettings, isOpen as aiOpen } from './ai/chat.js';
 import { initSync, syncNow, syncConfig, setSyncConfig, syncStatus, onSync, testSync, setupLink, readSetupLink } from './sync.js';
+import { isIOS, isStandalone } from './pair.js';
 import { HOSTED_URL } from './config.js';
 import { getTideModel } from './tides.js';
 import { initLayout, go, noteView, noteTab, layout, setScreen } from './layout.js';
@@ -30,7 +31,7 @@ initMap({
 });
 initTimebar({ onAddShoot: addShootToActive });
 initPanels();
-initProjects({ selectSpot, fitSpots, importFile, openSettings, importGoogle, showOnMap: (id) => { selectSpot(id); go('map'); if (state.view !== 'map') setView('map'); } });
+initProjects({ selectSpot, fitSpots, importFile, openSettings, importGoogle, pair: openPairing, showOnMap: (id) => { selectSpot(id); go('map'); if (state.view !== 'map') setView('map'); } });
 initStreetView({ openSettings, toast });
 initSky();
 initAI({ selectSpot, openSpot, flyTo, setView });
@@ -265,6 +266,10 @@ function openSettings(focus) {
         <section class="set-sec" id="set-sync">
           <h3>${icon('sync')}Synchronisierung Mac ↔ iPhone</h3>
           <p class="muted">Hält Projekte, Spots und Termine auf allen Geräten gleich – über ein <b>privates</b> GitHub-Repository, auf das nur du Zugriff hast. Jede Änderung bleibt dort als Versionsverlauf erhalten (zusätzliches Backup).</p>
+          ${syncConfig() ? '' : `<div class="pair-cta">
+            <button type="button" class="btn primary" id="sync-pair">${icon('qr')}Mit Mac verbinden – QR-Code scannen</button>
+            <p class="muted small">Am Mac: Einstellungen → Synchronisierung → <b>iPhone verbinden</b>. Deine Projekte, Spots und der Google-Key kommen dann automatisch hierher.</p>
+          </div>`}
           <div id="sync-state" class="key-out small"></div>
           <div class="row2">
             <label>Repository<input id="sync-repo" value="${esc(syncConfig()?.repo || (HOSTED_URL.match(/^https:\/\/([^.]+)\.github\.io/)?.[1] ? HOSTED_URL.match(/^https:\/\/([^.]+)\.github\.io/)[1] + '/lichtplan-daten' : ''))}" placeholder="benutzername/lichtplan-daten" spellcheck="false" autocomplete="off"></label>
@@ -346,6 +351,7 @@ function openSettings(focus) {
       n.querySelector('#sync-now')?.addEventListener('click', () => syncNow());
       n.querySelector('#sync-off')?.addEventListener('click', async () => { await setSyncConfig(null); toast('Synchronisierung getrennt (Daten bleiben auf diesem Gerät)'); });
       n.querySelector('#sync-qr')?.addEventListener('click', showSetupQR);
+      n.querySelector('#sync-pair')?.addEventListener('click', () => { n.remove(); openPairing(); });
       n.querySelector('#set-copy-ref')?.addEventListener('click', () => { navigator.clipboard?.writeText(`${location.origin}/*`); toast('Adresse kopiert'); });
       n.querySelector('#set-key-test').onclick = async () => {
         const out = n.querySelector('#set-key-out');
@@ -388,12 +394,35 @@ async function showSetupQR() {
     title: 'iPhone verbinden',
     body: `<div class="qr-wrap">${qr.createSvgTag({ cellSize: 4, margin: 4, scalable: true })}</div>
       <ol class="qr-steps">
-        <li>iPhone-<b>Kamera</b> auf den Code richten und den Link öffnen.</li>
-        <li>In Specula auf <b>Übernehmen</b> tippen – deine Projekte werden geladen.</li>
-        <li>In Safari: Teilen-Symbol → <b>Zum Home-Bildschirm</b>. Fertig: Specula ist jetzt eine App auf deinem iPhone oder iPad.</li>
+        <li><b>Specula schon am Home-Bildschirm?</b> Dort öffnen → <b>Mit Mac verbinden</b> → diesen Code scannen. Fertig – deine Projekte werden geladen.</li>
+        <li><b>Noch nicht?</b> Code mit der iPhone-<b>Kamera</b> scannen → in Safari Teilen → <b>Zum Home-Bildschirm</b>. Danach wie oben in der App verbinden.</li>
       </ol>
+      <div class="btn-row"><button type="button" class="btn sm ghost" id="qr-copy">${icon('copy')}Link kopieren</button><span class="muted small">zum Einfügen am iPhone (ohne Kamera)</span></div>
       <p class="muted small">Der Code enthält deinen Sync-Token${prefs.get('gmapsKey') ? ' und den Google-Key' : ''}. Nicht weitergeben.</p>`,
+    onOpen: (n) => {
+      n.querySelector('#qr-copy').onclick = async () => {
+        try { await navigator.clipboard.writeText(link); toast('Link kopiert – am iPhone unter „Mit Mac verbinden → Link einfügen“ einsetzen'); }
+        catch { toast('Kopieren nicht möglich', 'warn'); }
+      };
+    },
   });
+}
+// ── Mit Mac verbinden (am iPhone/iPad: QR-Code in der App scannen) ──
+async function openPairing() {
+  const m = await import('./pair.js');
+  m.openPairing({ apply: applySetup });
+}
+/** Einrichtung übernehmen (aus QR-Code, Link oder Einrichtungs-Link) */
+async function applySetup(cfg) {
+  if (cfg.gmapsKey) prefs.set('gmapsKey', cfg.gmapsKey);
+  if (cfg.sync) {
+    toast('Lade deine Projekte …');
+    await setSyncConfig(cfg.sync);
+    const ok = syncStatus().state === 'ok';
+    toast(ok ? `✓ Verbunden – ${store.spots.length} ${store.spots.length === 1 ? 'Spot' : 'Spots'} geladen${cfg.gmapsKey ? ', Street View bereit' : ''}` : `Sync: ${esc(syncStatus().error || 'Fehler')}`, ok ? '' : 'warn');
+  } else if (cfg.gmapsKey) toast('✓ Google-Key für Street View übernommen');
+  if (state.view === 'sv') activateStreetView();
+  if (store.spots.length) { refreshSidebar(); fitSpots(store.spots); }
 }
 /** Einrichtung über eine lokale Datei (nur am Mac, nur vom eigenen Rechner aus anlegbar) – ohne Klick */
 async function applyLocalSetup() {
@@ -412,12 +441,24 @@ function handleSetupLink() {
   const cfg = readSetupLink();
   if (!cfg) return;
   if (cfg.invalid) return toast('Ungültiger Einrichtungs-Link', 'warn');
-  if (cfg.gmapsKey && !cfg.sync) {
-    prefs.set('gmapsKey', cfg.gmapsKey);
-    toast('✓ Google-Key für Street View übernommen');
-    if (state.view === 'sv') activateStreetView();
+  // iPhone/iPad in Safari: Die Home-Bildschirm-App hat einen eigenen Speicher → dort verbinden
+  if (isIOS() && !isStandalone() && cfg.sync) {
+    modal({
+      title: 'Specula aufs iPhone holen',
+      body: `<ol class="qr-steps big">
+          <li>In Safari auf <b>Teilen</b> tippen (bei neuem iOS über <b>•••</b>) → <b>Zum Home-Bildschirm</b> → <b>Hinzufügen</b>.</li>
+          <li>Specula am <b>Home-Bildschirm</b> öffnen und auf <b>Mit Mac verbinden</b> tippen.</li>
+          <li>Den QR-Code am Mac <b>in der App</b> nochmal scannen – fertig.</li>
+        </ol>
+        <p class="muted small">Warum zweimal? Apps am Home-Bildschirm haben am iPhone einen eigenen Speicher – was hier in Safari eingerichtet wird, sieht die App nicht.</p>`,
+      actions: [
+        { label: 'Nur in Safari nutzen', kind: 'ghost', onClick: () => { applySetup(cfg); } },
+        { label: 'Verstanden', kind: 'primary' },
+      ],
+    });
     return;
   }
+  if (cfg.gmapsKey && !cfg.sync) { applySetup(cfg); return; }
   modal({
     title: 'Specula einrichten',
     body: `<p>Diese Einstellungen übernehmen?</p><ul>
@@ -425,11 +466,7 @@ function handleSetupLink() {
       ${cfg.gmapsKey ? '<li>Google-Key für Street View</li>' : ''}</ul>`,
     actions: [
       { label: 'Abbrechen', kind: 'ghost' },
-      { label: 'Übernehmen', kind: 'primary', onClick: async () => {
-        if (cfg.gmapsKey) prefs.set('gmapsKey', cfg.gmapsKey);
-        if (cfg.sync) { toast('Lade deine Projekte …'); await setSyncConfig(cfg.sync); toast(syncStatus().state === 'ok' ? `✓ Fertig – ${store.spots.length} Spots geladen` : `Sync: ${esc(syncStatus().error || 'Fehler')}`, syncStatus().state === 'ok' ? '' : 'warn'); }
-        if (store.spots.length) fitSpots(store.spots);
-      } },
+      { label: 'Übernehmen', kind: 'primary', onClick: () => { applySetup(cfg); } },
     ],
   });
 }
@@ -467,7 +504,7 @@ applyLocalSetup();
 window.addEventListener('hashchange', handleSetupLink);
 if (!prefs.get('firstRunDone')) {
   prefs.set('firstRunDone', true);
-  setTimeout(() => toast('Tipp: Klicke auf die Karte, um den Standort zu setzen · <kbd>?</kbd> zeigt Tastenkürzel'), 1200);
+  setTimeout(() => toast(matchMedia('(pointer: coarse)').matches ? 'Tipp: Tippe auf die Karte, um den Standort zu setzen' : 'Tipp: Klicke auf die Karte, um den Standort zu setzen · <kbd>?</kbd> zeigt Tastenkürzel'), 1200);
 }
 // ── Als eigene App installieren (Chrome/Edge: eigenes Fenster + eigenes Dock-Symbol) ──
 let installEvt = null;

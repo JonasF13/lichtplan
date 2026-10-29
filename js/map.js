@@ -74,7 +74,7 @@ export function initMap({ onSpotClick, onContext, onSpotDetails }) {
   ctx = canvas.getContext('2d');
   const redraw = rafThrottle(draw);
   map.on('move zoom resize viewreset zoomanim', redraw);
-  new ResizeObserver(() => { map.invalidateSize(); redraw(); }).observe($('#view-map'));
+  new ResizeObserver(() => { map.invalidateSize(); redraw(); applyPendingView(); }).observe($('#view-map'));
   window.addEventListener('lp-focus', redraw);
 
   onState((ch) => {
@@ -112,13 +112,28 @@ export function setStyle(key) {
   $$('#map-tools [data-style]').forEach((b) => b.classList.toggle('on', b.dataset.style === key));
 }
 
+// Ist die Karte gerade unsichtbar (Handy: anderer Bildschirm), wird das Ziel gemerkt
+// und beim nächsten Anzeigen ohne Animation angesprungen – sonst rechnet Leaflet mit Größe 0.
+let pendingView = null;
+const mapHidden = () => { const c = map.getContainer(); return !c.offsetWidth || !c.offsetHeight; };
+function applyPendingView() {
+  if (!pendingView || mapHidden()) return;
+  const f = pendingView; pendingView = null;
+  map.invalidateSize(); f();
+}
 export function flyTo(lat, lng, zoom) {
-  map.flyTo([lat, lng], zoom ?? Math.max(map.getZoom(), 14), { duration: 0.8 });
+  const z = zoom ?? Math.max(map.getZoom(), 14);
+  if (mapHidden()) { pendingView = () => map.setView([lat, lng], z, { animate: false }); return; }
+  pendingView = null;
+  map.flyTo([lat, lng], z, { duration: 0.8 });
 }
 export function fitSpots(spots) {
   if (!spots.length) return;
   if (spots.length === 1) return flyTo(spots[0].lat, spots[0].lng, 15);
-  map.flyToBounds(L.latLngBounds(spots.map((s) => [s.lat, s.lng])).pad(0.2), { duration: 0.8, maxZoom: 15 });
+  const b = L.latLngBounds(spots.map((s) => [s.lat, s.lng])).pad(0.2);
+  if (mapHidden()) { pendingView = () => map.fitBounds(b, { maxZoom: 15, animate: false }); return; }
+  pendingView = null;
+  map.flyToBounds(b, { duration: 0.8, maxZoom: 15 });
 }
 export const getMap = () => map;
 

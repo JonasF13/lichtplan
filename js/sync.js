@@ -174,9 +174,15 @@ export function setupLink(baseUrl) {
   const payload = { v: 1, sync: syncConfig(), gmapsKey: prefs.get('gmapsKey') || null };
   return `${baseUrl.replace(/#.*$/, '')}#lp-setup=${b64url(JSON.stringify(payload))}`;
 }
-export function readSetupLink() {
-  const m = location.hash.match(/lp-setup=([\w-]+)/);
+/** Einrichtungs-Daten aus einem Link/QR-Inhalt lesen (null = kein Specula-Code) */
+export function parseSetupText(text) {
+  const m = String(text || '').match(/lp-setup=([\w-]+)/);
   if (!m) return null;
+  try { const cfg = JSON.parse(unb64url(m[1])); return cfg && typeof cfg === 'object' ? cfg : { invalid: true }; } catch { return { invalid: true }; }
+}
+export function readSetupLink() {
+  if (!/lp-setup=/.test(location.hash)) return null;
+  const cfg = parseSetupText(location.hash);
   history.replaceState(null, '', location.pathname + location.search); // Token nicht im Verlauf lassen
-  try { return JSON.parse(unb64url(m[1])); } catch { return { invalid: true }; }
+  return cfg;
 }

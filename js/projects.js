@@ -22,7 +22,7 @@ let nav = { view: 'home', projectId: null, spotId: null, tab: 'spots', q: '', st
 let api;
 
 export function initProjects(a) {
-  api = a; // { selectSpot(id, opts), fitSpots(spots), importFile(), openSettings() }
+  api = a; // { selectSpot(id, opts), fitSpots(spots), importFile(), openSettings(), importGoogle(), pair(), showOnMap(id) }
   store.subscribe((why) => (why === 'sync' ? renderSoon() : render()));
   onSync(updateSyncFoot);
   setInterval(updateSyncFoot, 30000);
@@ -129,8 +129,11 @@ function renderHome() {
       body.appendChild(el(`<div class="welcome card">
         <h3>${icon('bookmark')}Willkommen bei Specula</h3>
         <p>Organisiere deine Foto-Spots in <b>Projekten</b> (z. B. eine Reise). Jeder Spot speichert Ort, Ziel, Notizen und beliebig viele <b>Termine</b> mit Uhrzeit – inklusive Lichtsituation.</p>
-        ${!syncConfig() && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1' ? `<p class="muted small">${icon('phone')} Deine Projekte vom Mac holen: am Mac <b>Einstellungen → iPhone verbinden</b> und den QR-Code mit der Kamera scannen.</p>` : ''}
-        <button class="btn primary block" id="sb-new2">${icon('plus')}Neues Projekt anlegen</button>
+        ${!syncConfig() && (window.SpeculaNative || (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1')) ? `<div class="pair-cta">
+          <button class="btn primary block" id="sb-pair">${icon('qr')}Mit Mac verbinden</button>
+          <p class="muted small">Holt deine Projekte vom Mac: dort <b>Einstellungen → Synchronisierung → iPhone verbinden</b>, dann hier den QR-Code scannen.</p>
+        </div>
+        <button class="btn block" id="sb-new2">${icon('plus')}Neues Projekt anlegen</button>` : `<button class="btn primary block" id="sb-new2">${icon('plus')}Neues Projekt anlegen</button>`}
       </div>`));
     }
     if (upcoming.length) {
@@ -169,6 +172,7 @@ function renderHome() {
   qi.addEventListener('input', debounce(() => { nav.q = qi.value; render(); setTimeout(() => { const n = $('#sb-q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); }); }, 200));
   node.querySelector('#sb-new').onclick = () => editProject();
   node.querySelector('#sb-new2')?.addEventListener('click', () => editProject());
+  node.querySelector('#sb-pair')?.addEventListener('click', () => api.pair?.());
   node.querySelector('#sb-more').onclick = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
     menu(r.left, r.bottom + 6, [
